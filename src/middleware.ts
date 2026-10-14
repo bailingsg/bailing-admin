@@ -38,6 +38,7 @@ export const config = {
     '/rfq/:path*',
     '/products/:path*',
     '/categories/:path*',
+    '/media/:path*',
     '/login',
   ],
 };

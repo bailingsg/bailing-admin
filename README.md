@@ -91,7 +91,7 @@ npm run dev
 - 登出：`POST /api/auth/logout` 清除 Cookie。
 - Dashboard 统计卡片数据来自后端 `GET /api/v1/cms/stats`（JWT 保护），全部为真实计数。
 
-## 当前状态（Phase 4.2）
+## 当前状态（Phase 4.3）
 
 - 最小可运行工程：布局与导航骨架、后端连接状态探测（`/api/v1/health/ready`）。
 - UI 设计系统同步完成：令牌（与主站同源）、字体、Button/Card/Badge、表单控件（Input/Textarea/Select/Label/FileUpload）、Container/PageHeader。
@@ -102,8 +102,14 @@ npm run dev
   - `/categories` 分类管理（新建、行内编辑、删除；含产品的分类禁删）；
   - 侧边栏 Products / Categories 已启用；middleware 保护 `/products/**`、`/categories/**`；
   - 所有写操作经服务端 Actions 提交（JWT 只在服务端读写 HttpOnly Cookie，浏览器 JS 不接触令牌）。
+- Media Library 已上线（Phase 4.3）：
+  - `/media` 画廊网格（缩略图 / 文件名 / 类型 / 大小 / 尺寸 / 上传时间 / 操作）；
+  - **拖拽上传**（客户端预校验类型与大小，经 Server Action 转发 multipart，JWT 不出服务端）；
+  - **两步确认删除**（页内确认，避免误删）；被产品引用的媒体后端返回 400，界面给出中文友好提示；
+  - 关键词搜索（URL 参数驱动服务端筛选）与分页；**图片预览弹窗**（大图 + 类型/大小/尺寸/时间/存储键/提供方）；
+  - 侧边栏 Media 已启用；middleware 保护 `/media/**`。
 - 尚未实现（后续阶段开发，本仓库不做虚假演示）：
-  - 博客文章与媒体资源管理（Media 库）
+  - 博客文章管理（Blog CMS）
   - 富文本编辑器
 
 ## 与主站的关系

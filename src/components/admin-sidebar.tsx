@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 /**
  * 后台导航项。
  *
- * Phase 4.2 状态：Dashboard / Products / Categories / RFQ 可用，
+ * Phase 4.3 状态：Dashboard / Products / Categories / Media / RFQ 可用，
  * 其余显示 Coming Soon（不可点击，避免进入 404 / 半成品页面）。
  */
 export interface NavItem {
@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', hint: '概览', available: true },
   { href: '/products', label: 'Products', hint: '产品管理', available: true },
   { href: '/categories', label: 'Categories', hint: '产品分类', available: true },
-  { href: '/media', label: 'Media', hint: 'Coming Soon', available: false },
+  { href: '/media', label: 'Media', hint: '媒体资源', available: true },
   { href: '/blog', label: 'Blog', hint: 'Coming Soon', available: false },
   { href: '/applications', label: 'Applications', hint: 'Coming Soon', available: false },
   { href: '/factory', label: 'Factory', hint: 'Coming Soon', available: false },
