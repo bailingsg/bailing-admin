@@ -1,38 +1,96 @@
 # bailing-admin — 百灵木业 B2B 管理后台
 
-> **状态：Phase 1 占位仓库，尚未启动开发。**
+百灵木业 B2B 网站体系的**管理后台前端**：Next.js 15 App Router + TypeScript + Tailwind CSS v4 + shadcn/ui，技术路线与主站 [`bailing-ui`](../bailing-ui) 保持一致。
 
-## 定位
+配套仓库：主站 [`bailing-ui`](../bailing-ui) · 后端 [`bailing-backend`](../bailing-backend)。
 
-Bailing Wooden B2B 网站体系的**管理后台**，与另外两个仓库配套：
+三仓库本地联调规范（端口、环境变量、启动顺序、排查）见共享工作区文档：[`docs/LOCAL-DEV-SETUP.md`](../docs/LOCAL-DEV-SETUP.md)。
 
-| 仓库 | 定位 |
+## 技术栈
+
+- Next.js 15（App Router，优先 Server Components）
+- TypeScript（strict）
+- Tailwind CSS v4 + shadcn/ui（new-york 风格）
+- ESLint（next/core-web-vitals + next/typescript）
+
+## 目录结构
+
+```
+bailing-admin/
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx                # 根布局（字体 + 侧边导航 + 内容区，响应式）
+│   │   ├── page.tsx                  # 后台入口页（概览 + 后端连接状态）
+│   │   ├── design-system/            # 设计系统预览页（开发自检用，非业务页面）
+│   │   └── globals.css               # Tailwind v4 入口 + 语义令牌映射
+│   ├── styles/tokens.css             # ★ 设计令牌（与主站同源，后台语义层）
+│   ├── tokens/index.ts               # 令牌 TS 出口（断点、容器宽度、色值等）
+│   ├── components/
+│   │   ├── layout/                   # Container / PageHeader
+│   │   ├── ui/                       # Button / Card / Badge / Input / Textarea / Select / Label / FileUpload / Spinner
+│   │   ├── admin-sidebar.tsx         # 侧边导航（深色，响应式）
+│   │   └── backend-status-card.tsx   # 后端连接状态卡片
+│   └── lib/utils.ts                  # cn() 工具
+├── components.json                   # shadcn/ui 配置
+└── next.config.ts
+```
+
+## 设计系统（Phase 3.2）
+
+与主站**同源**：共用品牌色阶、字体、字号阶梯、间距、圆角与阴影；仅语义层按管理后台场景裁剪，视觉为**专业管理系统**风格（中性画布 + 白色卡片 + 深色侧边栏），不使用营销官网的米色大面积留白。
+
+| 体系 | 后台差异 |
 | --- | --- |
-| `bailing-ui` | 面向海外采购商的主站（Next.js） |
-| `bailing-admin` | 内部管理后台（本仓库） |
-| `bailing-backend` | 后端 REST API + PostgreSQL + Prisma |
+| 颜色 | 额外语义令牌：`surface-sunken`（下沉区域）、`sidebar*`（侧边导航）、`header*`（页头）、`table-header` / `table-row-hover`（数据表格） |
+| 字号 | 与主站共用同一套 `text-*` 语义字号（h1 默认 `heading-lg`，密度高于官网） |
+| 间距 | 与主站同一规范阶梯；后台组件使用更紧凑的内边距 |
+| 组件 | Button（primary/secondary/outline/ghost/danger + loading）、Card（组合式）、Badge（状态语义：success/warning/info/muted/destructive）、Input/Textarea/Select/Label/FileUpload、Container/PageHeader |
+| 响应式 | Mobile First；< 768px 侧边栏收起为顶部栏 + 汉堡展开 |
 
-规划中的管理后台功能（Phase 2+ 逐步实现）：
+预览与自检页面：`/design-system`（`noindex`，不含业务数据）。**后台只能通过后端 REST API 访问数据，不得直连数据库**；本阶段未同步主站的营销类组件（ProductCard、Navbar、Footer 等）。
 
-- 管理员登录与权限（`AdminUser` 模型已就绪）
-- 产品与分类管理
-- 询盘查看与状态跟进
-- 博客文章管理
-- 媒体资源管理（腾讯云 COS）
+## 快速开始（本地开发）
 
-## 本阶段（Phase 1）不开发的原因
+前置：Node.js ≥ 20；建议先启动后端与数据库（见 `bailing-backend/README.md`）。
 
-Phase 1 规范明确禁止提前开展：产品管理后台、询盘管理后台、富文本编辑器、完整 CMS 等 Phase 2 工作。因此本仓库仅保留分支结构与占位说明，不包含业务代码。
+```bash
+# 1. 安装依赖
+npm install
 
-## 技术选型（Phase 2 启动时确定）
+# 2. 配置环境变量
+cp .env.example .env
 
-候选方向（尚未决定，启动 Phase 2 时评估）：
+# 3. 启动开发服务器（端口 3001）
+npm run dev
+```
 
-1. **Next.js 15 + shadcn/ui**：与主站 `bailing-ui` 技术栈同构，复用组件与规范，推荐；
-2. 独立 SPA（Vite + React）：构建产物更轻，但需要额外搭建路由与鉴权体系。
+访问：<http://localhost:3001>。
 
-无论选择哪种方案，管理后台只能通过 `bailing-backend` 的 REST API 访问业务数据（Token 鉴权方案在 Phase 2 设计），不得直连数据库。
+## 常用命令
 
-## 分支结构
+| 命令 | 说明 |
+| --- | --- |
+| `npm run dev` | 开发模式（热更新，端口 3001） |
+| `npm run build` / `npm run start` | 生产构建 / 运行（端口 3001） |
+| `npm run lint` / `npm run typecheck` | ESLint / tsc |
 
-与主站、后端保持一致：`master`（主干）→ `dev`（开发）→ `YYMMDD`（日常开发分支，如 `261013`）。
+## 环境变量
+
+见 [.env.example](./.env.example)：
+
+- `NEXT_PUBLIC_API_BASE_URL`：后端 API 基地址（默认 `http://127.0.0.1:4000/api/v1`），入口页在服务端请求它展示真实连接状态。
+- 安全要求：`NEXT_PUBLIC_` 前缀的变量会进入浏览器包，**禁止**放置数据库密码、邮箱密码、COS 密钥、登录 Token 等敏感信息。后台只能通过后端 REST API 访问业务数据，**不得直连 PostgreSQL**。
+
+## 当前状态（Phase 3.2）
+
+- 最小可运行工程：布局与导航骨架、后端连接状态探测（`/api/v1/health/ready`）。
+- UI 设计系统同步完成：令牌（与主站同源）、字体、Button/Card/Badge、表单控件（Input/Textarea/Select/Label/FileUpload）、Container/PageHeader；`npm run lint`、`npm run build` 通过。
+- 尚未实现（后续阶段开发，本仓库不做虚假演示）：
+  - 管理员登录与权限控制（Phase 3.3+）
+  - 产品与分类管理（Phase 3.3+）
+  - 询盘查看与状态跟进（Phase 3.3+）
+  - 博客文章与媒体资源管理（Phase 3.3+）
+
+## 与主站的关系
+
+管理后台是独立仓库、独立进程，运行于 3001 端口；与主站（3000）、后端（4000）通过 HTTP API 联调，详细联调规范见三仓库联调说明。
