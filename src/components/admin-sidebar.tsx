@@ -6,11 +6,29 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-const NAV_ITEMS = [
-  { href: '/', label: '概览', hint: '系统状态' },
-  { href: '/rfq', label: '询盘管理', hint: 'RFQ' },
-  { href: '/#products', label: '产品管理', hint: 'CMS 阶段' },
-  { href: '/#content', label: '内容管理', hint: 'CMS 阶段' },
+/**
+ * 后台导航项。
+ *
+ * Phase 4.1 状态：仅 Dashboard 与 RFQ 可用，其余显示 Coming Soon
+ * （不可点击，避免进入 404 / 半成品页面）。
+ */
+export interface NavItem {
+  href: string;
+  label: string;
+  hint: string;
+  available: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard', label: 'Dashboard', hint: '概览', available: true },
+  { href: '/products', label: 'Products', hint: 'Coming Soon', available: false },
+  { href: '/media', label: 'Media', hint: 'Coming Soon', available: false },
+  { href: '/blog', label: 'Blog', hint: 'Coming Soon', available: false },
+  { href: '/applications', label: 'Applications', hint: 'Coming Soon', available: false },
+  { href: '/factory', label: 'Factory', hint: 'Coming Soon', available: false },
+  { href: '/quality', label: 'Quality', hint: 'Coming Soon', available: false },
+  { href: '/rfq', label: 'RFQ', hint: '询盘管理', available: true },
+  { href: '/settings', label: 'Settings', hint: 'Coming Soon', available: false },
 ];
 
 /**
@@ -18,7 +36,6 @@ const NAV_ITEMS = [
  *
  * 视觉：深色侧边栏（专业管理系统风格，不使用营销官网配色）。
  * 响应式：>= 768px 左侧固定导航；< 768px 收起为顶部栏 + 汉堡展开面板。
- * 仅提供导航骨架，不包含权限控制与业务页面。
  */
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -33,7 +50,7 @@ export function AdminSidebar() {
     <aside className="shrink-0 bg-sidebar text-sidebar-foreground md:min-h-screen md:w-56 md:border-r md:border-sidebar-border">
       <div className="flex h-14 items-center justify-between px-4 md:h-auto md:px-5 md:py-5">
         <Link
-          href="/"
+          href="/dashboard"
           className="flex items-center gap-2 rounded-sm text-small font-semibold tracking-tight text-sidebar-foreground outline-none"
         >
           <span className="inline-flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-white/15">
@@ -91,9 +108,28 @@ export function AdminSidebar() {
       >
         {NAV_ITEMS.map((item) => {
           const active =
-            item.href === '/'
-              ? pathname === '/'
+            item.href === '/dashboard'
+              ? pathname === '/dashboard'
               : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+          // 未启用的模块：渲染为不可交互元素 + Coming Soon 标记
+          if (!item.available) {
+            return (
+              <span
+                key={item.href}
+                aria-disabled="true"
+                title={`${item.label} 模块规划于后续阶段`}
+                className={cn(
+                  'flex cursor-not-allowed items-center justify-between gap-2 rounded-md px-3 py-2 text-small',
+                  'text-sidebar-muted/60',
+                )}
+              >
+                <span>{item.label}</span>
+                <span className="text-caption text-sidebar-muted/60">{item.hint}</span>
+              </span>
+            );
+          }
+
           return (
             <Link
               key={item.href}

@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { AdminSidebar } from '@/components/admin-sidebar';
 import { brandPalette } from '@/tokens';
 
 /** 字体与主站一致：Inter（拉丁）+ 中文回退栈（见设计令牌 --font-sans） */
@@ -34,15 +33,16 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/**
+ * 根布局。
+ *
+ * Phase 4.1 起 Sidebar / Header 由 (dashboard) 路由组布局提供：
+ * 登录页（/login）等公开页保持无侧边栏的干净布局。
+ */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="zh-CN" className={inter.variable}>
-      <body className="min-h-screen bg-background text-foreground antialiased">
-        <div className="flex min-h-screen flex-col md:flex-row">
-          <AdminSidebar />
-          <main className="min-w-0 flex-1">{children}</main>
-        </div>
-      </body>
+      <body className="min-h-screen bg-background text-foreground antialiased">{children}</body>
     </html>
   );
 }

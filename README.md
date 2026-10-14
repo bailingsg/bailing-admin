@@ -79,17 +79,27 @@ npm run dev
 见 [.env.example](./.env.example)：
 
 - `NEXT_PUBLIC_API_BASE_URL`：后端 API 基地址（默认 `http://127.0.0.1:4000/api/v1`），入口页在服务端请求它展示真实连接状态。
+- `ADMIN_API_BASE_URL`：服务端专用后端地址（优先级高于 `NEXT_PUBLIC_API_BASE_URL`）。
+- `ADMIN_API_TOKEN`：RFQ 后台接口的共享密钥（服务端变量，禁止 `NEXT_PUBLIC_` 前缀）。
+- `ADMIN_SESSION_MAX_AGE`：HttpOnly 登录会话有效期（秒，默认 900，与后端 `JWT_EXPIRES_IN` 一致）。
 - 安全要求：`NEXT_PUBLIC_` 前缀的变量会进入浏览器包，**禁止**放置数据库密码、邮箱密码、COS 密钥、登录 Token 等敏感信息。后台只能通过后端 REST API 访问业务数据，**不得直连 PostgreSQL**。
 
-## 当前状态（Phase 3.2）
+## 管理员登录（Phase 4.1）
+
+- 登录页 `/login`：邮箱 + 口令 → 同源路由 `POST /api/auth/login`（服务端转发后端并把 JWT 写入 **HttpOnly Cookie** `admin_session`）。浏览器 JS 不接触令牌，规避 localStorage 方案的 XSS 泄漏风险。
+- 会话校验链：middleware（Cookie 存在性拦截 `/dashboard/**`、`/rfq/**`）→ `(dashboard)` 布局以 JWT 调后端 `/auth/me`（伪造或过期令牌在此被拒并回登录页）。
+- 登出：`POST /api/auth/logout` 清除 Cookie。
+- Dashboard 统计卡片数据来自后端 `GET /api/v1/cms/stats`（JWT 保护），全部为真实计数。
+
+## 当前状态（Phase 4.1）
 
 - 最小可运行工程：布局与导航骨架、后端连接状态探测（`/api/v1/health/ready`）。
-- UI 设计系统同步完成：令牌（与主站同源）、字体、Button/Card/Badge、表单控件（Input/Textarea/Select/Label/FileUpload）、Container/PageHeader；`npm run lint`、`npm run build` 通过。
+- UI 设计系统同步完成：令牌（与主站同源）、字体、Button/Card/Badge、表单控件（Input/Textarea/Select/Label/FileUpload）、Container/PageHeader。
+- 管理员认证已上线：登录页、HttpOnly Cookie 会话、Dashboard（侧边栏 + 顶栏 + 统计卡片）、路由保护；Sidebar 中 Products / Media / Blog / Applications / Factory / Quality / Settings 标注 Coming Soon（不可点击）。
 - 尚未实现（后续阶段开发，本仓库不做虚假演示）：
-  - 管理员登录与权限控制（Phase 3.3+）
-  - 产品与分类管理（Phase 3.3+）
-  - 询盘查看与状态跟进（Phase 3.3+）
-  - 博客文章与媒体资源管理（Phase 3.3+）
+  - 产品与分类管理（Phase 4.2+）
+  - 博客文章与媒体资源管理
+  - 富文本编辑器 / 文件上传
 
 ## 与主站的关系
 
