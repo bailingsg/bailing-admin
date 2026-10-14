@@ -27,3 +27,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# playwright-cli 测试快照产物
+.playwright-cli/

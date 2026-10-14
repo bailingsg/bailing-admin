@@ -91,15 +91,20 @@ npm run dev
 - 登出：`POST /api/auth/logout` 清除 Cookie。
 - Dashboard 统计卡片数据来自后端 `GET /api/v1/cms/stats`（JWT 保护），全部为真实计数。
 
-## 当前状态（Phase 4.1）
+## 当前状态（Phase 4.2）
 
 - 最小可运行工程：布局与导航骨架、后端连接状态探测（`/api/v1/health/ready`）。
 - UI 设计系统同步完成：令牌（与主站同源）、字体、Button/Card/Badge、表单控件（Input/Textarea/Select/Label/FileUpload）、Container/PageHeader。
-- 管理员认证已上线：登录页、HttpOnly Cookie 会话、Dashboard（侧边栏 + 顶栏 + 统计卡片）、路由保护；Sidebar 中 Products / Media / Blog / Applications / Factory / Quality / Settings 标注 Coming Soon（不可点击）。
+- 管理员认证已上线（Phase 4.1）：登录页、HttpOnly Cookie 会话、Dashboard（侧边栏 + 顶栏 + 统计卡片）、路由保护。
+- Products CMS 已上线（Phase 4.2）：
+  - `/products` 列表（图片/名称/分类/状态/Featured/更新时间/操作 + keyword 搜索 + 分类/状态筛选 + 分页）；
+  - `/products/create`、`/products/[id]/edit`（复用同一表单：JSON 规格编辑器、Tag 应用标签、SEO、草稿/发布；编辑页含图片上传/删除/主图管理与删除产品）；
+  - `/categories` 分类管理（新建、行内编辑、删除；含产品的分类禁删）；
+  - 侧边栏 Products / Categories 已启用；middleware 保护 `/products/**`、`/categories/**`；
+  - 所有写操作经服务端 Actions 提交（JWT 只在服务端读写 HttpOnly Cookie，浏览器 JS 不接触令牌）。
 - 尚未实现（后续阶段开发，本仓库不做虚假演示）：
-  - 产品与分类管理（Phase 4.2+）
-  - 博客文章与媒体资源管理
-  - 富文本编辑器 / 文件上传
+  - 博客文章与媒体资源管理（Media 库）
+  - 富文本编辑器
 
 ## 与主站的关系
 

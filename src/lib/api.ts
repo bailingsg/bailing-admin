@@ -47,6 +47,20 @@ interface ApiSuccess<T> {
   data: T;
 }
 
+interface ApiErrorPayload {
+  success: false;
+  error: { code: number; message: string | string[]; details?: unknown };
+}
+
+/** 从后端错误响应提取可读信息（class-validator 的 message 为数组，拼接展示） */
+function extractErrorMessage(json: unknown, status: number): string {
+  const error = (json as ApiErrorPayload | null)?.error;
+  const message = error?.message;
+  if (Array.isArray(message) && message.length > 0) return message.join('；');
+  if (typeof message === 'string' && message) return message;
+  return `请求失败（HTTP ${status}）`;
+}
+
 /**
  * 带 JWT 的请求。token 为 null 时等价于匿名请求（将得到后端 401）。
  * 超时与错误处理与 lib/rfq.ts 对齐，保证后台体验一致。
@@ -67,13 +81,13 @@ export async function authorizedRequest<T>(
       signal: AbortSignal.timeout(5000),
     });
 
-    const json = (await response.json().catch(() => null)) as ApiSuccess<T> | null;
+    const json = (await response.json().catch(() => null)) as ApiSuccess<T> | ApiErrorPayload | null;
 
     if (!response.ok || !json || json.success !== true) {
       if (response.status === 401) {
         return { ok: false, error: '登录已失效，请重新登录', status: 401 };
       }
-      return { ok: false, error: `请求失败（HTTP ${response.status}）`, status: response.status };
+      return { ok: false, error: extractErrorMessage(json, response.status), status: response.status };
     }
 
     return { ok: true, data: json.data };
