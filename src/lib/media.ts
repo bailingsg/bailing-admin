@@ -152,7 +152,7 @@ export function mediaTypeLabel(mimeType: string): string {
 /** 删除失败的友好提示映射（后端 message → 中文业务解释） */
 export function friendlyDeleteError(message: string): string {
   if (message.includes('Media asset is in use.')) {
-    return '该媒体正被产品图片引用，请先在产品编辑页移除引用后再删除';
+    return '该媒体正被产品图片或博客封面引用，请先移除引用后再删除';
   }
   return message;
 }

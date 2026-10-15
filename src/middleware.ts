@@ -39,6 +39,7 @@ export const config = {
     '/products/:path*',
     '/categories/:path*',
     '/media/:path*',
+    '/blog/:path*',
     '/login',
   ],
 };

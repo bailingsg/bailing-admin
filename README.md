@@ -91,7 +91,7 @@ npm run dev
 - 登出：`POST /api/auth/logout` 清除 Cookie。
 - Dashboard 统计卡片数据来自后端 `GET /api/v1/cms/stats`（JWT 保护），全部为真实计数。
 
-## 当前状态（Phase 4.3）
+## 当前状态（Phase 4.4）
 
 - 最小可运行工程：布局与导航骨架、后端连接状态探测（`/api/v1/health/ready`）。
 - UI 设计系统同步完成：令牌（与主站同源）、字体、Button/Card/Badge、表单控件（Input/Textarea/Select/Label/FileUpload）、Container/PageHeader。
@@ -108,9 +108,17 @@ npm run dev
   - **两步确认删除**（页内确认，避免误删）；被产品引用的媒体后端返回 400，界面给出中文友好提示；
   - 关键词搜索（URL 参数驱动服务端筛选）与分页；**图片预览弹窗**（大图 + 类型/大小/尺寸/时间/存储键/提供方）；
   - 侧边栏 Media 已启用；middleware 保护 `/media/**`。
+- Blog CMS 博客管理已上线（Phase 4.4）：
+  - `/blog` 文章列表（**封面缩略图** / 标题 / 分类 / 状态 / 发布时间 / 更新时间 / 操作 + 关键词搜索 + 状态筛选 + 分类筛选 + 分页）；
+  - `/blog/create`、`/blog/[id]/edit`（共用表单）：标题、slug、摘要、**富文本正文**、所属分类、标签多选、封面、状态（草稿/已发布）、精选、SEO 四字段、OG / Twitter Card 预留字段；
+  - `/blog/categories` 分类管理（新建 / 行内编辑 / 两步删除；含文章的分类禁删）、`/blog/tags` 标签管理；
+  - **富文本编辑器**（`rich-text-editor.tsx`）：H2/H3、段落、加粗/斜体/下划线、有序与无序列表、引用、代码块、链接、图片、清除格式；支持「可视化 / HTML 源码」双模式；
+  - **博客不自建上传**：图片与封面一律通过媒体选择弹窗从 Phase 4.3 媒体库（`/media`）只读选取，遵循「不自行存储图片」约束；
+  - 侧边栏 Blog 已启用（原 Coming Soon）；middleware 保护 `/blog/**`；
+  - 浏览器全流程 38/38 PASS（`bailing-backend/docs/phase-4.4-browser-flow.mjs`）。
 - 尚未实现（后续阶段开发，本仓库不做虚假演示）：
-  - 博客文章管理（Blog CMS）
-  - 富文本编辑器
+  - 用户管理与角色权限（RBAC）
+  - 页面 Builder / Factory / Quality / Applications CMS
 
 ## 与主站的关系
 
