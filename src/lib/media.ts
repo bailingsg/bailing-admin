@@ -145,6 +145,8 @@ export function mediaTypeLabel(mimeType: string): string {
     'image/png': 'PNG',
     'image/webp': 'WebP',
     'image/avif': 'AVIF',
+    // Phase 4.5：质量证书 / 报告用 PDF
+    'application/pdf': 'PDF',
   };
   return map[mimeType] ?? mimeType;
 }

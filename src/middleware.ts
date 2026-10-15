@@ -4,7 +4,8 @@ import { SESSION_COOKIE } from '@/lib/session';
 /**
  * 后台路由保护（边缘层快速拦截）。
  *
- * 保护范围：/dashboard/** 与 /rfq/**（及后续新增的 CMS 路由）。
+ * 保护范围：/dashboard/**、/rfq/**、/products/**、/categories/**、/media/**、
+ * /blog/**、/factory/**、/quality/**、/applications/**（及后续新增的 CMS 路由）。
  * 判断依据：会话 Cookie 是否存在（**不验签**——验签需要后端密钥，
  * 且边缘层只做存在性判断；伪造 Cookie 会在页面级 /auth/me 校验时被后端拒绝）。
  *
@@ -40,6 +41,9 @@ export const config = {
     '/categories/:path*',
     '/media/:path*',
     '/blog/:path*',
+    '/factory/:path*',
+    '/quality/:path*',
+    '/applications/:path*',
     '/login',
   ],
 };

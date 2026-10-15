@@ -91,7 +91,7 @@ npm run dev
 - 登出：`POST /api/auth/logout` 清除 Cookie。
 - Dashboard 统计卡片数据来自后端 `GET /api/v1/cms/stats`（JWT 保护），全部为真实计数。
 
-## 当前状态（Phase 4.4）
+## 当前状态（Phase 4.5）
 
 - 最小可运行工程：布局与导航骨架、后端连接状态探测（`/api/v1/health/ready`）。
 - UI 设计系统同步完成：令牌（与主站同源）、字体、Button/Card/Badge、表单控件（Input/Textarea/Select/Label/FileUpload）、Container/PageHeader。
@@ -116,9 +116,19 @@ npm run dev
   - **博客不自建上传**：图片与封面一律通过媒体选择弹窗从 Phase 4.3 媒体库（`/media`）只读选取，遵循「不自行存储图片」约束；
   - 侧边栏 Blog 已启用（原 Coming Soon）；middleware 保护 `/blog/**`；
   - 浏览器全流程 38/38 PASS（`bailing-backend/docs/phase-4.4-browser-flow.mjs`）。
+- Factory / Quality / Applications 企业内容 CMS 已上线（Phase 4.5，全部**中文界面**）：
+  - `/factory` 工厂实力列表（**封面 / 标题 / 内容类型 / 发布状态 / 排序 / 更新时间 / 操作**）+ 搜索 + 内容类型 / 状态筛选 + 分页；
+  - `/factory/create`、`/factory/[id]/edit`（共用表单）：标题、slug、内容类型（概览/厂区/设备/生产/装柜/展会）、摘要、正文（HTML，服务端净化）、**封面 + 多图图库（ALT / 排序 / 移除）**、**展会记录**（名称/日期/地点/可见性/说明/照片）、发布设置、SEO；
+  - `/quality` 质量体系列表（**标题 / 记录类型 / 认证机构 / 证书编号 / 有效期 / 发布状态 / 操作**）+ 搜索 + 类型 / 状态筛选；列表对到期日给出**克制中文提示**（无到期日不提示）；
+  - `/quality/create`、`/quality/[id]/edit`：机构、编号、颁发/到期日期**均可留空**（空即 `null`，不虚构认证信息）；**证书 / 报告文件经媒体库选择，支持 PDF**；
+  - `/applications` 产品应用场景列表（**封面 / 场景名称 / 关联产品数 / 发布状态 / 是否推荐 / 排序 / 操作**）+ 搜索 + 状态 / 推荐筛选；
+  - `/applications/create`、`/applications/[id]/edit`：封面 + **关联产品选择器**（显式多对多，基于 `productId`）+ 推荐开关 + SEO；
+  - **所有删除均为页内两步确认**（不使用原生 `confirm()`）；媒体「解除关联」与「删除文件」语义区分；
+  - 侧边栏 Applications / Factory / Quality 已启用（原 Coming Soon，中文 hint）；middleware 保护三组路由；
+  - 浏览器全流程 **34/34 PASS**（`bailing-backend/docs/phase-4.5-admin-e2e.mjs`，含桌面 + 移动端布局）。
 - 尚未实现（后续阶段开发，本仓库不做虚假演示）：
   - 用户管理与角色权限（RBAC）
-  - 页面 Builder / Factory / Quality / Applications CMS
+  - 页面 Builder
 
 ## 与主站的关系
 

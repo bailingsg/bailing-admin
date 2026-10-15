@@ -12,3 +12,15 @@ export function formatDateTime(iso: string): string {
     timeZone: 'Asia/Shanghai',
   }).format(date);
 }
+
+/** 仅日期展示（证书颁发 / 到期日等，Phase 4.5） */
+export function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Shanghai',
+  }).format(date);
+}
