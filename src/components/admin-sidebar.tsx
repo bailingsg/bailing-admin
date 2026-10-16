@@ -9,27 +9,36 @@ import { cn } from '@/lib/utils';
 /**
  * 后台导航项。
  *
- * Phase 4.5 状态：Dashboard / Products / Categories / Media / Blog / RFQ /
- * Applications / Factory / Quality 均可用；仅 Settings 显示 Coming Soon。
+ * Phase 4.6 起，入口按**导航权限**动态显示：只有账号具备对应权限时才渲染，
+ * 不再展示点了也进不去的菜单项（权限由后端 /auth/me 的 permissions 提供）。
  */
 export interface NavItem {
   href: string;
   label: string;
   hint: string;
-  available: boolean;
+  /** 展示该入口所需的权限 key（命中任意一个即可） */
+  permissions: string[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', hint: '概览', available: true },
-  { href: '/products', label: 'Products', hint: '产品管理', available: true },
-  { href: '/categories', label: 'Categories', hint: '产品分类', available: true },
-  { href: '/media', label: 'Media', hint: '媒体资源', available: true },
-  { href: '/blog', label: 'Blog', hint: '博客管理', available: true },
-  { href: '/applications', label: 'Applications', hint: '应用场景', available: true },
-  { href: '/factory', label: 'Factory', hint: '工厂实力', available: true },
-  { href: '/quality', label: 'Quality', hint: '质量体系', available: true },
-  { href: '/rfq', label: 'RFQ', hint: '询盘管理', available: true },
-  { href: '/settings', label: 'Settings', hint: 'Coming Soon', available: false },
+  { href: '/dashboard', label: 'Dashboard', hint: '概览', permissions: ['dashboard.read'] },
+  { href: '/products', label: 'Products', hint: '产品管理', permissions: ['products.read'] },
+  { href: '/categories', label: 'Categories', hint: '产品分类', permissions: ['categories.read'] },
+  { href: '/media', label: 'Media', hint: '媒体资源', permissions: ['media.read'] },
+  { href: '/blog', label: 'Blog', hint: '博客管理', permissions: ['blog.read'] },
+  { href: '/applications', label: 'Applications', hint: '应用场景', permissions: ['applications.read'] },
+  { href: '/factory', label: 'Factory', hint: '工厂实力', permissions: ['factory.read'] },
+  { href: '/quality', label: 'Quality', hint: '质量体系', permissions: ['quality.read'] },
+  { href: '/rfq', label: 'RFQ', hint: '询盘管理', permissions: ['rfq.read'] },
+  {
+    href: '/lead-distribution',
+    label: '询盘分配',
+    hint: '轮询与倾斜',
+    permissions: ['lead_distribution.read'],
+  },
+  { href: '/contacts', label: '员工联系方式', hint: '对外联系人', permissions: ['contacts.read'] },
+  { href: '/accounts', label: '账号管理', hint: '员工账号', permissions: ['accounts.read'] },
+  { href: '/roles', label: '角色与权限', hint: 'RBAC', permissions: ['roles.read'] },
 ];
 
 /**
@@ -37,11 +46,16 @@ const NAV_ITEMS: NavItem[] = [
  *
  * 视觉：深色侧边栏（专业管理系统风格，不使用营销官网配色）。
  * 响应式：>= 768px 左侧固定导航；< 768px 收起为顶部栏 + 汉堡展开面板。
+ *
+ * @param permissions 当前账号的生效权限 key（服务端从 /auth/me 取，避免客户端猜权限）
  */
-export function AdminSidebar() {
+export function AdminSidebar({ permissions }: { permissions: string[] }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
   const panelId = 'admin-sidebar-nav';
+  const allowed = (item: NavItem): boolean =>
+    item.permissions.length === 0 ||
+    item.permissions.some((p) => permissions.includes(p));
 
   React.useEffect(() => {
     setOpen(false);
@@ -107,29 +121,11 @@ export function AdminSidebar() {
           open ? 'flex' : 'hidden',
         )}
       >
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter(allowed).map((item) => {
           const active =
             item.href === '/dashboard'
               ? pathname === '/dashboard'
               : pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-          // 未启用的模块：渲染为不可交互元素 + Coming Soon 标记
-          if (!item.available) {
-            return (
-              <span
-                key={item.href}
-                aria-disabled="true"
-                title={`${item.label} 模块规划于后续阶段`}
-                className={cn(
-                  'flex cursor-not-allowed items-center justify-between gap-2 rounded-md px-3 py-2 text-small',
-                  'text-sidebar-muted/60',
-                )}
-              >
-                <span>{item.label}</span>
-                <span className="text-caption text-sidebar-muted/60">{item.hint}</span>
-              </span>
-            );
-          }
 
           return (
             <Link

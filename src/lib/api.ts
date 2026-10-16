@@ -12,14 +12,39 @@
 /** 管理员角色（与后端 Prisma AdminRole 枚举一致） */
 export type AdminRole = 'ADMIN' | 'EDITOR';
 
-/** 管理员档案（GET /auth/me） */
+/** 管理员档案（GET /auth/me）。Phase 4.6 起带出生效角色与权限 */
 export interface AdminProfile {
   id: string;
   email: string;
   name: string | null;
+  /** 兼容旧枚举（新逻辑以 roles 为准） */
   role: AdminRole;
+  /** 生效中的角色 key（如 SUPER_ADMIN / CONTENT_EDITOR / SALES） */
+  roles: string[];
+  /** 生效权限 key 全集（导航与按钮级控制唯一依据） */
+  permissions: string[];
+  isSuperAdmin: boolean;
+  jobTitle: string | null;
   isActive: boolean;
   lastLoginAt: string | null;
+}
+
+/** 是否具备某权限（超级管理员恒为 true，与后端 PermissionsGuard 语义一致） */
+export function hasPermission(
+  profile: Pick<AdminProfile, 'permissions' | 'isSuperAdmin'> | null | undefined,
+  permission: string,
+): boolean {
+  if (!profile) return false;
+  if (profile.isSuperAdmin) return true;
+  return profile.permissions.includes(permission);
+}
+
+/** 是否具备任意一个权限 */
+export function hasAnyPermission(
+  profile: Pick<AdminProfile, 'permissions' | 'isSuperAdmin'> | null | undefined,
+  permissions: string[],
+): boolean {
+  return permissions.some((p) => hasPermission(profile, p));
 }
 
 /** Dashboard 统计（GET /cms/stats，全部为后端真实计数） */

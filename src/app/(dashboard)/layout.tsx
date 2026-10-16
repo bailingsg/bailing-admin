@@ -31,7 +31,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <AdminSidebar />
+      <AdminSidebar permissions={admin.permissions ?? []} />
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-header-border bg-header px-4 sm:px-6">
           <p className="text-small font-semibold tracking-tight text-foreground">
