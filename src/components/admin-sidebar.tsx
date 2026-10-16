@@ -29,6 +29,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/applications', label: 'Applications', hint: '应用场景', permissions: ['applications.read'] },
   { href: '/factory', label: 'Factory', hint: '工厂实力', permissions: ['factory.read'] },
   { href: '/quality', label: 'Quality', hint: '质量体系', permissions: ['quality.read'] },
+  { href: '/site-content', label: 'Site Content', hint: '站点内容', permissions: ['site.read'] },
+  { href: '/navigation', label: 'Navigation', hint: '导航管理', permissions: ['nav.read'] },
   { href: '/rfq', label: 'RFQ', hint: '询盘管理', permissions: ['rfq.read'] },
   {
     href: '/lead-distribution',

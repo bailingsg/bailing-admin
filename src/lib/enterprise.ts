@@ -1,5 +1,5 @@
 /**
- * 管理后台 —— Enterprise CMS API 访问层（服务端，Phase 4.5）。
+ * 管理后台 —— Enterprise CMS API 访问层（服务端，Phase 4.5，4.7 起三态）。
  *
  * 覆盖三大企业内容模块：
  *   · Factory（工厂实力）
@@ -15,13 +15,19 @@ import { authorizedRequest, type ApiResult } from './api';
 
 /* ============================== 公共类型 ============================== */
 
-export type ContentStatus = 'DRAFT' | 'PUBLISHED';
+/**
+ * 内容发布状态（Phase 4.7 统一三态，与后端 ContentStatus 对齐）：
+ *   DRAFT（草稿）→ PUBLISHED（已发布）→ ARCHIVED（已归档）
+ * 公开 API 只读 PUBLISHED；DRAFT / ARCHIVED 一律不可见。
+ */
+export type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
-export const CONTENT_STATUSES: ContentStatus[] = ['DRAFT', 'PUBLISHED'];
+export const CONTENT_STATUSES: ContentStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
 
 export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
   DRAFT: '草稿',
   PUBLISHED: '已发布',
+  ARCHIVED: '已归档',
 };
 
 export interface EnterpriseMediaRef {

@@ -48,7 +48,7 @@ export function LoginForm() {
       }
 
       const json = (await response.json().catch(() => null)) as { error?: string } | null;
-      setError(json?.error ?? 'Invalid email or password');
+      setError(translateLoginError(json?.error));
     } catch {
       setError('无法连接登录服务，请稍后重试');
     } finally {
@@ -60,7 +60,7 @@ export function LoginForm() {
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5" aria-label="管理员登录">
       <div className="flex flex-col gap-2">
         <Label htmlFor="email" required>
-          Email
+          邮箱
         </Label>
         <Input
           id="email"
@@ -78,7 +78,7 @@ export function LoginForm() {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="password" required>
-          Password
+          口令
         </Label>
         <Input
           id="password"
@@ -107,8 +107,21 @@ export function LoginForm() {
       </div>
 
       <Button type="submit" fullWidth loading={loading} disabled={loading}>
-        {loading ? 'Signing in…' : 'Login'}
+        {loading ? '登录中…' : '登录'}
       </Button>
     </form>
   );
+}
+
+/**
+ * 登录错误文案中文化（后台统一中文）。
+ *
+ * 只映射后端既有语义，不改变判定逻辑：
+ *   · 401 Invalid email or password → 邮箱或口令错误
+ *   · 其余（如后端服务异常 / 校验失败）原样透出，便于排查
+ */
+function translateLoginError(raw: string | undefined): string {
+  if (!raw) return '邮箱或口令错误';
+  if (/invalid email or password/i.test(raw)) return '邮箱或口令错误';
+  return raw;
 }

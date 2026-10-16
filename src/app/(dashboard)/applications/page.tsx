@@ -222,7 +222,7 @@ export default async function ApplicationsPage({
                       {item.productCount} 个
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={item.status === 'PUBLISHED' ? 'success' : 'warning'}>
+                      <Badge variant={item.status === 'PUBLISHED' ? 'success' : item.status === 'ARCHIVED' ? 'muted' : 'warning'}>
                         {CONTENT_STATUS_LABELS[item.status]}
                       </Badge>
                     </td>
@@ -276,7 +276,7 @@ export default async function ApplicationsPage({
                           >
                             {item.name}
                           </Link>
-                          <Badge variant={item.status === 'PUBLISHED' ? 'success' : 'warning'}>
+                          <Badge variant={item.status === 'PUBLISHED' ? 'success' : item.status === 'ARCHIVED' ? 'muted' : 'warning'}>
                             {CONTENT_STATUS_LABELS[item.status]}
                           </Badge>
                         </div>

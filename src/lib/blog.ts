@@ -10,13 +10,19 @@ import { authorizedRequest, type ApiResult } from './api';
 
 /* ------------------------------- 类型 ------------------------------- */
 
-export type PostStatus = 'DRAFT' | 'PUBLISHED';
+/**
+ * 博客文章发布状态（Phase 4.7 统一三态，与后端 PostStatus 对齐）：
+ *   DRAFT（草稿）→ PUBLISHED（已发布）→ ARCHIVED（已归档）
+ * 公开 API 只读 PUBLISHED；DRAFT / ARCHIVED 一律不可见。
+ */
+export type PostStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
-export const POST_STATUSES: PostStatus[] = ['DRAFT', 'PUBLISHED'];
+export const POST_STATUSES: PostStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
 
 export const POST_STATUS_LABELS: Record<PostStatus, string> = {
   DRAFT: '草稿',
   PUBLISHED: '已发布',
+  ARCHIVED: '已归档',
 };
 
 export interface BlogCategory {

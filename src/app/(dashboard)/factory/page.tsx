@@ -215,7 +215,7 @@ export default async function FactoryPage({
                       {FACTORY_SECTION_TYPE_LABELS[item.sectionType]}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={item.status === 'PUBLISHED' ? 'success' : 'warning'}>
+                      <Badge variant={item.status === 'PUBLISHED' ? 'success' : item.status === 'ARCHIVED' ? 'muted' : 'warning'}>
                         {CONTENT_STATUS_LABELS[item.status]}
                       </Badge>
                     </td>
@@ -250,7 +250,7 @@ export default async function FactoryPage({
                       >
                         {item.title}
                       </Link>
-                      <Badge variant={item.status === 'PUBLISHED' ? 'success' : 'warning'}>
+                      <Badge variant={item.status === 'PUBLISHED' ? 'success' : item.status === 'ARCHIVED' ? 'muted' : 'warning'}>
                         {CONTENT_STATUS_LABELS[item.status]}
                       </Badge>
                     </div>

@@ -29,8 +29,10 @@ function isStatus(value: string | undefined): value is PostStatus {
   return value !== undefined && (POST_STATUSES as string[]).includes(value);
 }
 
-function statusBadgeVariant(status: PostStatus): 'success' | 'warning' {
-  return status === 'PUBLISHED' ? 'success' : 'warning';
+function statusBadgeVariant(status: PostStatus): 'success' | 'warning' | 'muted' {
+  if (status === 'PUBLISHED') return 'success';
+  if (status === 'ARCHIVED') return 'muted';
+  return 'warning';
 }
 
 /**

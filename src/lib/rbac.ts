@@ -400,3 +400,216 @@ export function setContactVisibility(
 export function deleteContact(token: string | null, id: string): Promise<ApiResult<{ id: string }>> {
   return authorizedRequest<{ id: string }>(`/cms/contacts/${id}`, token, { method: 'DELETE' });
 }
+
+/* ------------------------ 站点内容 / 导航（Phase 4.7） ------------------------ */
+
+export type SitePageKey = 'HOME' | 'ABOUT' | 'CONTACT';
+export type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type NavLocation = 'HEADER' | 'FOOTER';
+
+export interface SiteSectionItem {
+  title: string;
+  description: string | null;
+  href: string | null;
+}
+
+export interface SiteSectionStat {
+  label: string;
+  value: string;
+}
+
+export interface SiteSection {
+  id: string;
+  page: SitePageKey;
+  sectionKey: string;
+  eyebrow: string | null;
+  title: string | null;
+  subtitle: string | null;
+  body: string | null;
+  media: {
+    id: string;
+    url: string;
+    altText: string | null;
+    width: number | null;
+    height: number | null;
+    mimeType: string;
+  } | null;
+  ctaLabel: string | null;
+  ctaUrl: string | null;
+  items: SiteSectionItem[];
+  stats: SiteSectionStat[];
+  status: ContentStatus;
+  sortOrder: number;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SiteSectionList {
+  items: SiteSection[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface CreateSiteSectionInput {
+  page: SitePageKey;
+  sectionKey: string;
+  eyebrow?: string;
+  title?: string;
+  subtitle?: string;
+  body?: string;
+  mediaId?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  items?: SiteSectionItem[];
+  stats?: SiteSectionStat[];
+  status?: ContentStatus;
+  sortOrder?: number;
+}
+
+/**
+ * 更新入参：与新建相同字段均可选； mediaId / ctaUrl / items / stats 额外支持
+ * 显式 null 表示「清空」（Partial 交集会吞掉 null，故先用 Omit 排除）。
+ */
+export type UpdateSiteSectionInput = Partial<
+  Omit<CreateSiteSectionInput, 'mediaId' | 'ctaUrl' | 'items' | 'stats'>
+> & {
+  mediaId?: string | null;
+  ctaUrl?: string | null;
+  items?: SiteSectionItem[] | null;
+  stats?: SiteSectionStat[] | null;
+};
+
+export interface NavItem {
+  id: string;
+  location: NavLocation;
+  label: string;
+  url: string;
+  sortOrder: number;
+  isActive: boolean;
+  openInNewTab: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NavItemList {
+  items: NavItem[];
+  total: number;
+}
+
+export interface CreateNavItemInput {
+  location: NavLocation;
+  label: string;
+  url: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  openInNewTab?: boolean;
+}
+
+export type UpdateNavItemInput = Partial<CreateNavItemInput>;
+
+/** 内容状态中文标签（全站统一） */
+export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
+  DRAFT: '草稿',
+  PUBLISHED: '已发布',
+  ARCHIVED: '已归档',
+};
+
+/** 内容状态顺序（与后端一致，供筛选与表单枚举） */
+export const CONTENT_STATUSES: ContentStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+
+export const SITE_PAGE_LABELS: Record<SitePageKey, string> = {
+  HOME: '首页',
+  ABOUT: '关于我们',
+  CONTACT: '联系页',
+};
+
+export const NAV_LOCATION_LABELS: Record<NavLocation, string> = {
+  HEADER: '页眉导航',
+  FOOTER: '页脚链接',
+};
+
+/* ------------------------------ 站点分区 API ------------------------------ */
+
+export function listSiteSections(
+  token: string | null,
+  query: { page?: SitePageKey; status?: ContentStatus; keyword?: string; pageNum?: number; pageSize?: number } = {},
+): Promise<ApiResult<SiteSectionList>> {
+  const search = new URLSearchParams();
+  if (query.page) search.set('page', query.page);
+  if (query.status) search.set('status', query.status);
+  if (query.keyword) search.set('keyword', query.keyword);
+  if (query.pageNum && query.pageNum > 1) search.set('pageNum', String(query.pageNum));
+  if (query.pageSize) search.set('pageSize', String(query.pageSize));
+  const qs = search.toString();
+  return authorizedRequest<SiteSectionList>(`/cms/site/sections${qs ? `?${qs}` : ''}`, token);
+}
+
+export function getSiteSection(token: string | null, id: string): Promise<ApiResult<SiteSection>> {
+  return authorizedRequest<SiteSection>(`/cms/site/sections/${id}`, token);
+}
+
+export function createSiteSection(
+  token: string | null,
+  input: CreateSiteSectionInput,
+): Promise<ApiResult<SiteSection>> {
+  return authorizedRequest<SiteSection>('/cms/site/sections', token, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateSiteSection(
+  token: string | null,
+  id: string,
+  input: UpdateSiteSectionInput,
+): Promise<ApiResult<SiteSection>> {
+  return authorizedRequest<SiteSection>(`/cms/site/sections/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteSiteSection(token: string | null, id: string): Promise<ApiResult<{ id: string }>> {
+  return authorizedRequest<{ id: string }>(`/cms/site/sections/${id}`, token, { method: 'DELETE' });
+}
+
+/* ------------------------------ 导航项 API ------------------------------ */
+
+export function listNavItems(
+  token: string | null,
+  query: { location?: NavLocation; isActive?: boolean } = {},
+): Promise<ApiResult<NavItemList>> {
+  const search = new URLSearchParams();
+  if (query.location) search.set('location', query.location);
+  if (query.isActive !== undefined) search.set('isActive', String(query.isActive));
+  const qs = search.toString();
+  return authorizedRequest<NavItemList>(`/cms/nav/items${qs ? `?${qs}` : ''}`, token);
+}
+
+export function createNavItem(
+  token: string | null,
+  input: CreateNavItemInput,
+): Promise<ApiResult<NavItem>> {
+  return authorizedRequest<NavItem>('/cms/nav/items', token, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateNavItem(
+  token: string | null,
+  id: string,
+  input: UpdateNavItemInput,
+): Promise<ApiResult<NavItem>> {
+  return authorizedRequest<NavItem>(`/cms/nav/items/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteNavItem(token: string | null, id: string): Promise<ApiResult<{ id: string }>> {
+  return authorizedRequest<{ id: string }>(`/cms/nav/items/${id}`, token, { method: 'DELETE' });
+}
