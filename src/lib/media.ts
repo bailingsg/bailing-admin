@@ -26,6 +26,10 @@ export interface MediaAsset {
   width: number | null;
   height: number | null;
   altText: string | null;
+  /** Phase 5.0：图片 SEO 元数据 */
+  title: string | null;
+  caption: string | null;
+  description: string | null;
   provider: 'LOCAL' | 'TENCENT_COS';
   category: MediaCategory;
   createdBy: string;
@@ -70,6 +74,18 @@ export function listMedia(
 /** 媒体详情 */
 export function getMedia(token: string | null, id: string): Promise<ApiResult<MediaAsset>> {
   return authorizedRequest<MediaAsset>(`/cms/media/${id}`, token);
+}
+
+/** 更新媒体 SEO 元数据（Phase 5.0：alt / title / caption / description） */
+export function updateMediaSeo(
+  token: string | null,
+  id: string,
+  input: { altText?: string; title?: string; caption?: string; description?: string },
+): Promise<ApiResult<MediaAsset>> {
+  return authorizedRequest<MediaAsset>(`/cms/media/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
 }
 
 /** 删除媒体（被产品图片引用时后端返回 400 “Media asset is in use.”） */

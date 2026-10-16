@@ -20,6 +20,17 @@ export interface NavItem {
   permissions: string[];
 }
 
+/** 折叠菜单组（Phase 5.0：SEO 管理中心） */
+export interface NavGroup {
+  /** 分组 key（用于展开态判断） */
+  key: string;
+  label: string;
+  hint: string;
+  /** 展示该分组所需的权限 key（命中任意一个即可） */
+  permissions: string[];
+  children: Omit<NavItem, 'hint'>[];
+}
+
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', hint: '概览', permissions: ['dashboard.read'] },
   { href: '/products', label: 'Products', hint: '产品管理', permissions: ['products.read'] },
@@ -43,6 +54,29 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/roles', label: '角色与权限', hint: 'RBAC', permissions: ['roles.read'] },
 ];
 
+/** 折叠菜单组（Phase 5.0：SEO 管理中心，权限 seo.read） */
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: 'seo',
+    label: 'SEO',
+    hint: 'SEO 管理',
+    permissions: ['seo.read'],
+    children: [
+      { href: '/seo', label: 'Overview', permissions: ['seo.read'] },
+      { href: '/seo/pages', label: 'Pages', permissions: ['seo.read'] },
+      { href: '/seo/products', label: 'Products', permissions: ['seo.read'] },
+      { href: '/seo/blog', label: 'Blog', permissions: ['seo.read'] },
+      { href: '/seo/media', label: 'Media SEO', permissions: ['seo.read'] },
+      { href: '/seo/redirects', label: 'Redirects', permissions: ['seo.read'] },
+      { href: '/seo/sitemap', label: 'Sitemap', permissions: ['seo.read'] },
+      { href: '/seo/robots', label: 'Robots', permissions: ['seo.read'] },
+      { href: '/seo/schema', label: 'Schema', permissions: ['seo.read'] },
+      { href: '/seo/audit', label: 'SEO Audit', permissions: ['seo.read'] },
+      { href: '/seo/settings', label: 'Global Settings', permissions: ['seo.read'] },
+    ],
+  },
+];
+
 /**
  * AdminSidebar —— 后台侧边导航
  *
@@ -55,9 +89,18 @@ export function AdminSidebar({ permissions }: { permissions: string[] }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
   const panelId = 'admin-sidebar-nav';
-  const allowed = (item: NavItem): boolean =>
+  const allowed = (item: { permissions: string[] }): boolean =>
     item.permissions.length === 0 ||
     item.permissions.some((p) => permissions.includes(p));
+
+  // 分组默认展开规则：位于分组任一子路由时自动展开
+  const isGroupActive = (group: NavGroup): boolean =>
+    group.children.some(
+      (child) =>
+        child.href === '/seo'
+          ? pathname === '/seo'
+          : pathname === child.href || pathname.startsWith(`${child.href}/`),
+    );
 
   React.useEffect(() => {
     setOpen(false);
@@ -145,6 +188,51 @@ export function AdminSidebar({ permissions }: { permissions: string[] }) {
               <span>{item.label}</span>
               <span className="text-caption text-sidebar-muted">{item.hint}</span>
             </Link>
+          );
+        })}
+
+        {/* Phase 5.0：SEO 管理中心（折叠组，位于分组子路由时自动展开） */}
+        {NAV_GROUPS.filter(allowed).map((group) => {
+          const groupActive = isGroupActive(group);
+          return (
+            <div key={group.key} className="flex flex-col gap-1">
+              <Link
+                href={group.children[0].href}
+                aria-current={groupActive && pathname === group.children[0].href ? 'page' : undefined}
+                className={cn(
+                  'flex items-center justify-between gap-2 rounded-md px-3 py-2 text-small',
+                  'transition-colors duration-[var(--duration-fast)]',
+                  groupActive
+                    ? 'bg-sidebar-active font-medium text-sidebar-foreground'
+                    : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground',
+                )}
+              >
+                <span>{group.label}</span>
+                <span className="text-caption text-sidebar-muted">{group.hint}</span>
+              </Link>
+              <div className="ml-3 flex flex-col gap-0.5 border-l border-sidebar-border pl-2">
+                {group.children.slice(1).map((child) => {
+                  const active =
+                    pathname === child.href || pathname.startsWith(`${child.href}/`);
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'rounded-md px-3 py-1.5 text-caption',
+                        'transition-colors duration-[var(--duration-fast)]',
+                        active
+                          ? 'bg-sidebar-active font-medium text-sidebar-foreground'
+                          : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground',
+                      )}
+                    >
+                      {child.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
