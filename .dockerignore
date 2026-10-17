@@ -1,0 +1,13 @@
+# ---- excluded from build context (never inside the image) ----
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+out
+coverage
+*.log
+*.pem
+*.key
+*.tsbuildinfo
