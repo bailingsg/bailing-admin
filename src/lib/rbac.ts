@@ -404,7 +404,7 @@ export function deleteContact(token: string | null, id: string): Promise<ApiResu
 /* ------------------------ 站点内容 / 导航（Phase 4.7） ------------------------ */
 
 export type SitePageKey = 'HOME' | 'ABOUT' | 'CONTACT';
-export type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'UNPUBLISHED' | 'ARCHIVED';
 export type NavLocation = 'HEADER' | 'FOOTER';
 
 export interface SiteSectionItem {
@@ -441,6 +441,10 @@ export interface SiteSection {
   status: ContentStatus;
   sortOrder: number;
   publishedAt: string | null;
+  /** 线上版本号（0 = 从未发布） */
+  publishedVersion?: number;
+  /** 是否存在未发布的编辑稿 */
+  hasUnpublishedChanges?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -465,7 +469,7 @@ export interface CreateSiteSectionInput {
   ctaUrl?: string;
   items?: SiteSectionItem[];
   stats?: SiteSectionStat[];
-  status?: ContentStatus;
+  // Phase 1：status 不再可写——发布态只能经 POST /publish、/unpublish 变更
   sortOrder?: number;
 }
 
@@ -514,11 +518,12 @@ export type UpdateNavItemInput = Partial<CreateNavItemInput>;
 export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
   DRAFT: '草稿',
   PUBLISHED: '已发布',
+  UNPUBLISHED: '已下架',
   ARCHIVED: '已归档',
 };
 
 /** 内容状态顺序（与后端一致，供筛选与表单枚举） */
-export const CONTENT_STATUSES: ContentStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+export const CONTENT_STATUSES: ContentStatus[] = ['DRAFT', 'PUBLISHED', 'UNPUBLISHED', 'ARCHIVED'];
 
 export const SITE_PAGE_LABELS: Record<SitePageKey, string> = {
   HOME: '首页',

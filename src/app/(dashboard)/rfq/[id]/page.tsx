@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/format';
 import { getRfqDetail } from '@/lib/rfq';
+import { getSessionToken } from '@/lib/session';
 import { RfqStatusBadge } from '../status-badge';
 import { StatusUpdater } from './status-updater';
 
@@ -37,7 +38,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
  */
 export default async function RfqDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await getRfqDetail(id);
+  const token = await getSessionToken();
+  const result = await getRfqDetail(token, id);
 
   if (!result.ok) {
     return (

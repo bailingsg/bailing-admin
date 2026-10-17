@@ -7,7 +7,6 @@ import {
   createQualityRecord,
   deleteQualityRecord,
   updateQualityRecord,
-  type ContentStatus,
   type QualityRecordType,
 } from '@/lib/enterprise';
 
@@ -35,10 +34,6 @@ export interface SimpleFormState {
 function str(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function isStatus(value: string): value is ContentStatus {
-  return value === 'DRAFT' || value === 'PUBLISHED';
 }
 
 function isRecordType(value: string): value is QualityRecordType {
@@ -73,17 +68,14 @@ export async function saveQualityRecordAction(
   const recordType = str(formData, 'recordType');
   if (!isRecordType(recordType)) return { ok: false, error: '请选择记录类型' };
 
-  const status = str(formData, 'status') || 'DRAFT';
-  if (!isStatus(status)) return { ok: false, error: '发布状态不合法' };
-
   const issueDateRaw = str(formData, 'issueDate');
   const expiryDateRaw = str(formData, 'expiryDate');
 
+  // Phase 1：不再提交 status / publishedAt——发布态只能经「发布 / 取消发布」变更
   const body: Record<string, unknown> = {
     title,
     slug,
     recordType,
-    status,
     issuer: str(formData, 'issuer') || null,
     certificateNumber: str(formData, 'certificateNumber') || null,
     issueDate: toIsoOrNull(issueDateRaw),
@@ -94,13 +86,6 @@ export async function saveQualityRecordAction(
     seoTitle: str(formData, 'seoTitle') || null,
     seoDescription: str(formData, 'seoDescription') || null,
   };
-
-  const publishedAtRaw = str(formData, 'publishedAt');
-  if (publishedAtRaw) {
-    body.publishedAt = new Date(publishedAtRaw).toISOString();
-  } else if (id) {
-    body.publishedAt = null;
-  }
 
   const token = await getSessionToken();
   const result = id

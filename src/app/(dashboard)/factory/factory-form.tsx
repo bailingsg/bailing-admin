@@ -7,8 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import type { MediaAsset } from '@/lib/media';
 import {
-  CONTENT_STATUSES,
-  CONTENT_STATUS_LABELS,
   FACTORY_SECTION_TYPES,
   FACTORY_SECTION_TYPE_LABELS,
   type FactorySectionDetail,
@@ -52,23 +50,6 @@ const inputClass =
 
 const textareaClass =
   'w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40';
-
-/** ISO → datetime-local 值（固定 Asia/Shanghai） */
-function toLocalInputValue(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const formatted = new Intl.DateTimeFormat('sv-SE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'Asia/Shanghai',
-  }).format(date);
-  return formatted.replace(' ', 'T');
-}
 
 export function FactorySectionForm({ section }: FactoryFormProps) {
   const router = useRouter();
@@ -571,27 +552,12 @@ export function FactorySectionForm({ section }: FactoryFormProps) {
         </CardContent>
       </Card>
 
-      {/* ---------------------------- 发布设置 ---------------------------- */}
+      {/* ---------------------------- 排序 ---------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>发布设置</CardTitle>
+          <CardTitle>排序</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="status">发布状态</Label>
-            <select
-              id="status"
-              name="status"
-              defaultValue={section?.status ?? 'DRAFT'}
-              className={inputClass}
-            >
-              {CONTENT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {CONTENT_STATUS_LABELS[s]}
-                </option>
-              ))}
-            </select>
-          </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="sortOrder">排序（数字越小越靠前）</Label>
             <input
@@ -604,19 +570,9 @@ export function FactorySectionForm({ section }: FactoryFormProps) {
               className={inputClass}
             />
           </div>
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label htmlFor="publishedAt">发布时间</Label>
-            <input
-              id="publishedAt"
-              name="publishedAt"
-              type="datetime-local"
-              defaultValue={toLocalInputValue(section?.publishedAt)}
-              className={inputClass}
-            />
-            <span className="text-caption text-text-muted">
-              留空时：发布状态自动记录当前时间，草稿则保留原发布时间。
-            </span>
-          </div>
+          <p className="text-caption text-text-muted sm:col-span-2">
+            发布状态与发布时间由右上角「发布」面板控制：保存只更新编辑稿，公开站仍是上一个已发布版本。
+          </p>
         </CardContent>
       </Card>
 

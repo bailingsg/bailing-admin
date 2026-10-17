@@ -5,13 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import {
-  POST_STATUSES,
-  POST_STATUS_LABELS,
-  type BlogCategory,
-  type BlogPostDetail,
-  type BlogTag,
-} from '@/lib/blog';
+import { type BlogCategory, type BlogPostDetail, type BlogTag } from '@/lib/blog';
 import { saveBlogPostAction, type BlogFormState } from './actions';
 import { RichTextEditor } from './rich-text-editor';
 import { CoverPicker } from './cover-picker';
@@ -38,23 +32,6 @@ const inputClass =
 
 const textareaClass =
   'w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40';
-
-/** ISO → datetime-local 值（固定 Asia/Shanghai，避免时区差异） */
-function toLocalInputValue(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const formatted = new Intl.DateTimeFormat('sv-SE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'Asia/Shanghai',
-  }).format(date);
-  return formatted.replace(' ', 'T');
-}
 
 export function BlogPostForm({ categories, tags, post }: BlogPostFormProps) {
   const router = useRouter();
@@ -194,42 +171,12 @@ export function BlogPostForm({ categories, tags, post }: BlogPostFormProps) {
         </CardContent>
       </Card>
 
-      {/* ---------------------------- 发布与 SEO ---------------------------- */}
+      {/* ---------------------------- SEO ---------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>发布状态与 SEO</CardTitle>
+          <CardTitle>SEO</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="status">状态</Label>
-            <select
-              id="status"
-              name="status"
-              defaultValue={post?.status ?? 'DRAFT'}
-              className={inputClass}
-            >
-              {POST_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {POST_STATUS_LABELS[s]}
-                </option>
-              ))}
-            </select>
-            <p className="text-caption text-text-muted">
-              转为「已发布」且未填发布时间时，系统会自动记录当前时间
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="publishedAt">发布时间</Label>
-            <input
-              id="publishedAt"
-              name="publishedAt"
-              type="datetime-local"
-              defaultValue={toLocalInputValue(post?.publishedAt)}
-              className={inputClass}
-            />
-          </div>
-
           <div className="flex items-center gap-2">
             <input
               id="featured"
@@ -240,6 +187,10 @@ export function BlogPostForm({ categories, tags, post }: BlogPostFormProps) {
             />
             <Label htmlFor="featured">精选（首页 / 推荐位展示）</Label>
           </div>
+
+          <p className="text-caption text-text-muted">
+            发布状态与发布时间由右上角「发布」面板控制，保存不会改变线上版本。
+          </p>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="seoTitle">SEO 标题</Label>

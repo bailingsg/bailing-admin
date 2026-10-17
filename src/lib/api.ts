@@ -1,10 +1,9 @@
 /**
  * 管理后台 —— 带 JWT 的后端 API 访问层（服务端）。
  *
- * 与 lib/rfq.ts（X-Admin-Token，Phase 3.7 兼容通道）并存：
- *   · 本文件：从 HttpOnly Cookie 取 JWT，以 Authorization: Bearer 调用后端
- *     受 JwtAuthGuard 保护的接口（/auth/me、/cms/stats 及后续 CMS 接口）
- *   · lib/rfq.ts：维持既有 X-Admin-Token 机制访问 RFQ 后台接口，暂不迁移
+ * 全站统一：从 HttpOnly Cookie 取 JWT，以 Authorization: Bearer 调用后端
+ * 受 JwtAuthGuard 保护的接口（/auth/me、/cms/stats、CMS 各模块与 RFQ）。
+ * Phase 0 起 lib/rfq.ts 也复用本文件的 authorizedRequest，不再有独立令牌通道。
  */
 
 /* ------------------------------- 类型 ------------------------------- */

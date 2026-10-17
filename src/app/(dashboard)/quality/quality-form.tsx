@@ -7,8 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { mediaTypeLabel, type MediaAsset } from '@/lib/media';
 import {
-  CONTENT_STATUSES,
-  CONTENT_STATUS_LABELS,
   QUALITY_RECORD_TYPES,
   QUALITY_RECORD_TYPE_LABELS,
   type QualityRecordDetail,
@@ -49,23 +47,6 @@ function toDateInputValue(iso: string | null | undefined): string {
     timeZone: 'Asia/Shanghai',
   }).format(date);
   return formatted;
-}
-
-/** ISO → datetime-local 值 */
-function toLocalInputValue(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const formatted = new Intl.DateTimeFormat('sv-SE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'Asia/Shanghai',
-  }).format(date);
-  return formatted.replace(' ', 'T');
 }
 
 export function QualityRecordForm({ record }: QualityFormProps) {
@@ -292,25 +273,12 @@ export function QualityRecordForm({ record }: QualityFormProps) {
         </CardContent>
       </Card>
 
-      {/* ---------------------------- 发布设置 ---------------------------- */}
+      {/* ---------------------------- 排序 ---------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>发布设置</CardTitle>
+          <CardTitle>排序</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="status">发布状态</Label>
-            <select id="status" name="status" defaultValue={record?.status ?? 'DRAFT'} className={inputClass}>
-              {CONTENT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {CONTENT_STATUS_LABELS[s]}
-                </option>
-              ))}
-            </select>
-            <span className="text-caption text-text-muted">
-              仅「已发布」记录会出现在公开站；未发布的证书不会被公开接口读取。
-            </span>
-          </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="sortOrder">排序（数字越小越靠前）</Label>
             <input
@@ -323,16 +291,9 @@ export function QualityRecordForm({ record }: QualityFormProps) {
               className={inputClass}
             />
           </div>
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label htmlFor="publishedAt">发布时间</Label>
-            <input
-              id="publishedAt"
-              name="publishedAt"
-              type="datetime-local"
-              defaultValue={toLocalInputValue(record?.publishedAt)}
-              className={inputClass}
-            />
-          </div>
+          <p className="text-caption text-text-muted sm:col-span-2">
+            发布状态与发布时间由右上角「发布」面板控制。只有已发布的记录会出现在公开站，保存不会改变线上版本。
+          </p>
         </CardContent>
       </Card>
 

@@ -11,14 +11,15 @@ import { authorizedRequest, type ApiResult } from './api';
 
 /* ------------------------------- 类型 ------------------------------- */
 
-export type ProductStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type ProductStatus = 'DRAFT' | 'PUBLISHED' | 'UNPUBLISHED' | 'ARCHIVED';
 
-export const PRODUCT_STATUSES: ProductStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+export const PRODUCT_STATUSES: ProductStatus[] = ['DRAFT', 'PUBLISHED', 'UNPUBLISHED', 'ARCHIVED'];
 
 export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
   DRAFT: '草稿',
   PUBLISHED: '已发布',
-  ARCHIVED: '已归档',
+  UNPUBLISHED: '已下架',
+  ARCHIVED: '已下架',
 };
 
 export interface CmsCategory {

@@ -7,7 +7,6 @@ import {
   createSiteSection,
   deleteSiteSection,
   updateSiteSection,
-  type ContentStatus,
   type CreateSiteSectionInput,
   type SitePageKey,
   type SiteSectionItem,
@@ -45,10 +44,6 @@ function str(formData: FormData, key: string): string {
 
 function isSitePage(value: string): value is SitePageKey {
   return value === 'HOME' || value === 'ABOUT' || value === 'CONTACT';
-}
-
-function isStatus(value: string): value is ContentStatus {
-  return value === 'DRAFT' || value === 'PUBLISHED' || value === 'ARCHIVED';
 }
 
 function num(formData: FormData, key: string): number | undefined {
@@ -135,9 +130,6 @@ export async function saveSectionAction(
     return { ok: false, error: '分区键只能包含小写字母、数字与 . - 分隔（如 home.hero）' };
   }
 
-  const statusRaw = str(formData, 'status');
-  const status: ContentStatus = isStatus(statusRaw) ? statusRaw : 'DRAFT';
-
   const itemsResult = parseItems(str(formData, 'items'));
   if (!itemsResult.ok) return { ok: false, error: itemsResult.error };
   const statsResult = parseStats(str(formData, 'stats'));
@@ -161,7 +153,6 @@ export async function saveSectionAction(
     ctaUrl: optional('ctaUrl'),
     items: itemsResult.value,
     stats: statsResult.value,
-    status,
     sortOrder: num(formData, 'sortOrder'),
   } satisfies Omit<CreateSiteSectionInput, 'page' | 'sectionKey'> & {
     page: SitePageKey;
@@ -187,7 +178,6 @@ export async function saveSectionAction(
     ctaUrl: common.ctaUrl,
     items: common.items,
     stats: common.stats,
-    status: common.status,
     sortOrder: common.sortOrder,
   };
   const result = await updateSiteSection(token, id, updateInput);
@@ -204,20 +194,6 @@ export async function deleteSectionAction(id: string): Promise<SimpleFormState> 
   const result = await deleteSiteSection(token, id);
   if (!result.ok) {
     return { ok: false, error: result.error ?? '删除失败' };
-  }
-  revalidatePath('/site-content');
-  return { ok: true };
-}
-
-/** 快捷状态流转（列表页内联，仍是两步确认） */
-export async function setSectionStatusAction(
-  id: string,
-  status: ContentStatus,
-): Promise<SimpleFormState> {
-  const token = await getSessionToken();
-  const result = await updateSiteSection(token, id, { status });
-  if (!result.ok) {
-    return { ok: false, error: result.error ?? '状态更新失败' };
   }
   revalidatePath('/site-content');
   return { ok: true };

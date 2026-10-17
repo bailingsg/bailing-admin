@@ -1,18 +1,13 @@
 /**
  * 管理后台 —— RFQ 询盘数据访问层（服务端）。
  *
- * 后台接口受后端 AdminTokenGuard 保护：当后端配置了 ADMIN_API_TOKEN 时，
- * 必须携带请求头 `X-Admin-Token`。令牌为**服务端变量**，绝不可用
- * NEXT_PUBLIC_ 前缀（否则会打包进浏览器）。
+ * Phase 0 起后台接口改为 JWT + RBAC 鉴权（rfq.read / rfq.update）：
+ *   · 令牌来自 HttpOnly Cookie（`admin_session`），只在服务端读取并转发
+ *   · 与产品 / 博客等 CMS 模块使用同一套认证与权限体系
+ *   · 旧的 X-Admin-Token 共享密钥通道仅保留给服务间调用，未配置即拒绝（fail-closed）
  */
 
-const API_BASE = (
-  process.env.ADMIN_API_BASE_URL ??
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  'http://127.0.0.1:4000/api/v1'
-).replace(/\/$/, '');
-
-const ADMIN_TOKEN = process.env.ADMIN_API_TOKEN ?? '';
+import { authorizedRequest, type ApiResult } from './api';
 
 /* ------------------------------- 类型 ------------------------------- */
 
@@ -56,47 +51,7 @@ export interface PaginatedRfq {
 }
 
 /** 数据访问结果：页面据此渲染错误态而非整页崩溃 */
-export type RfqResult<T> = { ok: true; data: T } | { ok: false; error: string };
-
-/* ------------------------------- 内部 ------------------------------- */
-
-function authHeaders(): HeadersInit {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (ADMIN_TOKEN.trim() !== '') headers['X-Admin-Token'] = ADMIN_TOKEN;
-  return headers;
-}
-
-interface ApiSuccess<T> {
-  success: true;
-  data: T;
-}
-
-async function request<T>(path: string, init?: RequestInit): Promise<RfqResult<T>> {
-  try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: { ...authHeaders(), ...(init?.headers ?? {}) },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(5000),
-    });
-
-    const json = (await response.json().catch(() => null)) as ApiSuccess<T> | null;
-
-    if (!response.ok || !json || json.success !== true) {
-      if (response.status === 401) {
-        return { ok: false, error: '未授权：后端已启用 ADMIN_API_TOKEN，请在本后台配置同名令牌。' };
-      }
-      return { ok: false, error: `请求失败（HTTP ${response.status}）` };
-    }
-
-    return { ok: true, data: json.data };
-  } catch (error) {
-    return {
-      ok: false,
-      error: `无法连接后端接口：${(error as Error).message}`,
-    };
-  }
-}
+export type RfqResult<T> = ApiResult<T>;
 
 /* ------------------------------- API ------------------------------- */
 
@@ -106,30 +61,32 @@ export interface RfqListQuery {
   status?: RfqStatus;
 }
 
-/** 询盘列表 */
-export function getRfqList(query: RfqListQuery = {}): Promise<RfqResult<PaginatedRfq>> {
+/** 询盘列表（需要 rfq.read） */
+export function getRfqList(
+  token: string | null,
+  query: RfqListQuery = {},
+): Promise<RfqResult<PaginatedRfq>> {
   const params = new URLSearchParams();
   if (query.page) params.set('page', String(query.page));
   if (query.pageSize) params.set('pageSize', String(query.pageSize));
   if (query.status) params.set('status', query.status);
   const qs = params.toString();
-  return request<PaginatedRfq>(`/rfq${qs ? `?${qs}` : ''}`);
+  return authorizedRequest<PaginatedRfq>(`/rfq${qs ? `?${qs}` : ''}`, token);
 }
 
-/** 询盘详情 */
-export function getRfqDetail(id: string): Promise<RfqResult<RfqDetail>> {
-  return request<RfqDetail>(`/rfq/${encodeURIComponent(id)}`);
+/** 询盘详情（需要 rfq.read） */
+export function getRfqDetail(token: string | null, id: string): Promise<RfqResult<RfqDetail>> {
+  return authorizedRequest<RfqDetail>(`/rfq/${encodeURIComponent(id)}`, token);
 }
 
-/** 状态流转 */
-export function updateRfqStatus(id: string, status: RfqStatus): Promise<RfqResult<RfqDetail>> {
-  return request<RfqDetail>(`/rfq/${encodeURIComponent(id)}/status`, {
+/** 状态流转（需要 rfq.update） */
+export function updateRfqStatus(
+  token: string | null,
+  id: string,
+  status: RfqStatus,
+): Promise<RfqResult<RfqDetail>> {
+  return authorizedRequest<RfqDetail>(`/rfq/${encodeURIComponent(id)}/status`, token, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
-}
-
-/** 后台是否已配置访问令牌（用于界面提示） */
-export function isAdminTokenConfigured(): boolean {
-  return ADMIN_TOKEN.trim() !== '';
 }

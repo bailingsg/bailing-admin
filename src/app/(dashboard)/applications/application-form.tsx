@@ -6,11 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { mediaTypeLabel, type MediaAsset } from '@/lib/media';
-import {
-  CONTENT_STATUSES,
-  CONTENT_STATUS_LABELS,
-  type ApplicationDetail,
-} from '@/lib/enterprise';
+import { type ApplicationDetail } from '@/lib/enterprise';
 import { saveApplicationAction, type ApplicationFormState } from './actions';
 import { ApplicationCoverPicker } from './cover-picker';
 import { ProductPickerModal, type SelectedProduct } from './product-picker';
@@ -40,23 +36,6 @@ interface PickedProduct {
   id: string;
   name: string;
   slug: string;
-}
-
-/** ISO → datetime-local 值 */
-function toLocalInputValue(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const formatted = new Intl.DateTimeFormat('sv-SE', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'Asia/Shanghai',
-  }).format(date);
-  return formatted.replace(' ', 'T');
 }
 
 export function ApplicationForm({ application }: ApplicationFormProps) {
@@ -343,30 +322,12 @@ export function ApplicationForm({ application }: ApplicationFormProps) {
         </CardContent>
       </Card>
 
-      {/* ---------------------------- 发布设置 ---------------------------- */}
+      {/* ---------------------------- 排序与推荐位 ---------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>发布设置</CardTitle>
+          <CardTitle>排序与推荐位</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="status">发布状态</Label>
-            <select
-              id="status"
-              name="status"
-              defaultValue={application?.status ?? 'DRAFT'}
-              className={inputClass}
-            >
-              {CONTENT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {CONTENT_STATUS_LABELS[s]}
-                </option>
-              ))}
-            </select>
-            <span className="text-caption text-text-muted">
-              仅「已发布」场景会出现在公开站。
-            </span>
-          </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="sortOrder">排序（数字越小越靠前）</Label>
             <input
@@ -376,16 +337,6 @@ export function ApplicationForm({ application }: ApplicationFormProps) {
               min={0}
               max={9999}
               defaultValue={application?.sortOrder ?? 0}
-              className={inputClass}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label htmlFor="publishedAt">发布时间</Label>
-            <input
-              id="publishedAt"
-              name="publishedAt"
-              type="datetime-local"
-              defaultValue={toLocalInputValue(application?.publishedAt)}
               className={inputClass}
             />
           </div>
@@ -399,6 +350,9 @@ export function ApplicationForm({ application }: ApplicationFormProps) {
             />
             <Label htmlFor="featured">设为推荐场景（首页优先展示）</Label>
           </div>
+          <p className="text-caption text-text-muted sm:col-span-2">
+            发布状态与发布时间由右上角「发布」面板控制：保存只更新编辑稿，公开站仍是上一个已发布版本。
+          </p>
         </CardContent>
       </Card>
 

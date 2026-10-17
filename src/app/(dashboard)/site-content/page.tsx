@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getSessionToken } from '@/lib/session';
+import { getCurrentAdmin, hasPermission, type AdminProfile } from '@/lib/api';
 import {
   CONTENT_STATUS_LABELS,
   CONTENT_STATUSES,
@@ -14,6 +15,7 @@ import {
   type SitePageKey,
 } from '@/lib/rbac';
 import { SectionFormModal } from './section-form-modal';
+import { SectionPublishActions } from './section-publish-actions';
 import { DeleteSectionButton } from './delete-section-button';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +33,13 @@ function isSitePage(value: string | undefined): value is SitePageKey {
 
 function isStatus(value: string | undefined): value is ContentStatus {
   return value !== undefined && (CONTENT_STATUSES as string[]).includes(value);
+}
+
+/** 状态徽章样式：已发布=success，草稿=warning，已下架/已归档=muted */
+function statusVariant(status: ContentStatus): 'success' | 'warning' | 'muted' {
+  if (status === 'PUBLISHED') return 'success';
+  if (status === 'DRAFT') return 'warning';
+  return 'muted';
 }
 
 /**
@@ -51,13 +60,21 @@ export default async function SiteContentPage({
   const sitePage = isSitePage(params.sitePage) ? params.sitePage : undefined;
 
   const token = await getSessionToken();
-  const result = await listSiteSections(token, {
-    pageNum: page,
-    pageSize: PAGE_SIZE,
-    keyword,
-    status,
-    page: sitePage,
-  });
+  const [result, admin] = await Promise.all([
+    listSiteSections(token, {
+      pageNum: page,
+      pageSize: PAGE_SIZE,
+      keyword,
+      status,
+      page: sitePage,
+    }),
+    getCurrentAdmin(token) as Promise<
+      { ok: true; data: AdminProfile } | { ok: false; error: string; status: number }
+    >,
+  ]);
+
+  const canPublish = hasPermission(admin.ok ? admin.data : null, 'site.publish');
+  const canUnpublish = hasPermission(admin.ok ? admin.data : null, 'site.unpublish');
 
   const withFilters = (next: { page?: number; status?: ContentStatus; sitePage?: SitePageKey }): string => {
     const search = new URLSearchParams();
@@ -200,21 +217,23 @@ export default async function SiteContentPage({
                         .join(' · ') || '—'}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge
-                        variant={
-                          item.status === 'PUBLISHED'
-                            ? 'success'
-                            : item.status === 'ARCHIVED'
-                              ? 'muted'
-                              : 'warning'
-                        }
-                      >
+                      <Badge variant={statusVariant(item.status)}>
                         {CONTENT_STATUS_LABELS[item.status]}
                       </Badge>
+                      {item.hasUnpublishedChanges ? (
+                        <div className="mt-1 text-caption text-warning-600">有未发布的修改</div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 text-small text-text-secondary">{item.sortOrder}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
+                        <SectionPublishActions
+                          id={item.id}
+                          status={item.status}
+                          hasUnpublishedChanges={item.hasUnpublishedChanges}
+                          canPublish={canPublish}
+                          canUnpublish={canUnpublish}
+                        />
                         <SectionFormModal
                           mode="edit"
                           triggerLabel="编辑"
@@ -246,15 +265,7 @@ export default async function SiteContentPage({
                         </div>
                         <span className="font-mono text-caption text-text-muted">{item.sectionKey}</span>
                       </div>
-                      <Badge
-                        variant={
-                          item.status === 'PUBLISHED'
-                            ? 'success'
-                            : item.status === 'ARCHIVED'
-                              ? 'muted'
-                              : 'warning'
-                        }
-                      >
+                      <Badge variant={statusVariant(item.status)}>
                         {CONTENT_STATUS_LABELS[item.status]}
                       </Badge>
                     </div>
@@ -266,6 +277,13 @@ export default async function SiteContentPage({
                       {item.ctaUrl ? ' · CTA' : null} · 排序 {item.sortOrder}
                     </span>
                     <div className="flex items-center gap-2 pt-1">
+                      <SectionPublishActions
+                        id={item.id}
+                        status={item.status}
+                        hasUnpublishedChanges={item.hasUnpublishedChanges}
+                        canPublish={canPublish}
+                        canUnpublish={canUnpublish}
+                      />
                       <SectionFormModal
                         mode="edit"
                         triggerLabel="编辑"

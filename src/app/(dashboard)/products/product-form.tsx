@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
-  PRODUCT_STATUSES,
-  PRODUCT_STATUS_LABELS,
   type CmsCategory,
   type CmsProductDetail,
   type ProductStatus,
@@ -213,28 +211,13 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         </CardContent>
       </Card>
 
-      {/* ---------------------------- 发布与 SEO ---------------------------- */}
+      {/* ---------------------------- SEO 与推荐 ---------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>发布状态与 SEO</CardTitle>
+          <CardTitle>SEO 与推荐位</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="status">状态</Label>
-            <select
-              id="status"
-              name="status"
-              defaultValue={product?.status ?? 'DRAFT'}
-              className="h-10 w-full rounded-md border border-border bg-background px-3 text-body text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              {PRODUCT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {PRODUCT_STATUS_LABELS[s]}
-                </option>
-              ))}
-            </select>
-          </div>
-
+          {/* Phase 1：发布状态不在此处设置——上线与下架只能经编辑页的「发布」面板 */}
           <div className="flex items-center gap-2 sm:pt-6">
             <input
               id="isFeatured"

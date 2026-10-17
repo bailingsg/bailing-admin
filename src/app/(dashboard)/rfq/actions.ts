@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { RFQ_STATUSES, updateRfqStatus, type RfqStatus } from '@/lib/rfq';
+import { getSessionToken } from '@/lib/session';
 
 export interface RfqActionState {
   ok: boolean;
@@ -21,7 +22,8 @@ export async function updateRfqStatusAction(
     return { ok: false, error: '参数不合法' };
   }
 
-  const result = await updateRfqStatus(id, status);
+  const token = await getSessionToken();
+  const result = await updateRfqStatus(token, id, status);
   if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath('/rfq');

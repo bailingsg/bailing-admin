@@ -7,7 +7,6 @@ import {
   createFactorySection,
   deleteFactorySection,
   updateFactorySection,
-  type ContentStatus,
   type FactorySectionType,
 } from '@/lib/enterprise';
 
@@ -34,10 +33,6 @@ function str(formData: FormData, key: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function isStatus(value: string): value is ContentStatus {
-  return value === 'DRAFT' || value === 'PUBLISHED';
-}
-
 function isSectionType(value: string): value is FactorySectionType {
   return (
     value === 'OVERVIEW' ||
@@ -47,14 +42,6 @@ function isSectionType(value: string): value is FactorySectionType {
     value === 'LOADING' ||
     value === 'EXHIBITION'
   );
-}
-
-/** datetime-local（如 2026-10-15T15:30）→ ISO 8601；空值返回 null */
-function toIsoOrNull(raw: string): string | null {
-  if (!raw) return null;
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString();
 }
 
 interface FactoryImageInput {
@@ -104,20 +91,17 @@ export async function saveFactorySectionAction(
   const sectionType = str(formData, 'sectionType');
   if (!isSectionType(sectionType)) return { ok: false, error: '请选择内容类型' };
 
-  const status = str(formData, 'status') || 'DRAFT';
-  if (!isStatus(status)) return { ok: false, error: '发布状态不合法' };
-
   const images = parseJson<FactoryImageInput[]>(str(formData, 'imagesJson'), '图库');
   if (!images.ok) return { ok: false, error: images.error };
 
   const exhibitions = parseJson<FactoryExhibitionInput[]>(str(formData, 'exhibitionsJson'), '展会');
   if (!exhibitions.ok) return { ok: false, error: exhibitions.error };
 
+  // Phase 1：不再提交 status / publishedAt——发布态只能经「发布 / 取消发布」变更
   const body: Record<string, unknown> = {
     title,
     slug,
     sectionType,
-    status,
     summary: str(formData, 'summary') || null,
     content: str(formData, 'content') || null,
     coverMediaId: str(formData, 'coverMediaId') || null,
@@ -127,13 +111,6 @@ export async function saveFactorySectionAction(
     images: images.value,
     exhibitions: exhibitions.value,
   };
-
-  const publishedAtRaw = str(formData, 'publishedAt');
-  if (publishedAtRaw) {
-    body.publishedAt = toIsoOrNull(publishedAtRaw);
-  } else if (id) {
-    body.publishedAt = null;
-  }
 
   const token = await getSessionToken();
   const result = id

@@ -17,16 +17,19 @@ import { authorizedRequest, type ApiResult } from './api';
 
 /**
  * 内容发布状态（Phase 4.7 统一三态，与后端 ContentStatus 对齐）：
- *   DRAFT（草稿）→ PUBLISHED（已发布）→ ARCHIVED（已归档）
- * 公开 API 只读 PUBLISHED；DRAFT / ARCHIVED 一律不可见。
+ *   DRAFT（草稿）→ PUBLISHED（已发布）→ UNPUBLISHED（已下架，保留内容与历史）
+ * ARCHIVED 为历史遗留值，仍可能存在于旧数据中。
+ * 公开 API 只读 PUBLISHED；其余状态一律不可见。
+ * Phase 1 起状态只能由「发布 / 取消发布」动作变更，表单不再提交 status。
  */
-export type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'UNPUBLISHED' | 'ARCHIVED';
 
-export const CONTENT_STATUSES: ContentStatus[] = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+export const CONTENT_STATUSES: ContentStatus[] = ['DRAFT', 'PUBLISHED', 'UNPUBLISHED', 'ARCHIVED'];
 
 export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
   DRAFT: '草稿',
   PUBLISHED: '已发布',
+  UNPUBLISHED: '已下架',
   ARCHIVED: '已归档',
 };
 

@@ -4,9 +4,12 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/format';
 import { getSessionToken } from '@/lib/session';
-import { getBlogPost, listBlogCategories, listBlogTags, POST_STATUS_LABELS } from '@/lib/blog';
+import { getBlogPost, listBlogCategories, listBlogTags } from '@/lib/blog';
+import { getCurrentAdmin, hasPermission, type AdminProfile } from '@/lib/api';
+import { getContentPreview, type ContentPreview } from '@/lib/publishing';
 import { BlogNav } from '../../blog-nav';
 import { BlogPostForm } from '../../post-form';
+import { PublishControls } from '../../../publish-controls';
 import { DeleteBlogPostButton } from '../../delete-post-button';
 
 export const dynamic = 'force-dynamic';
@@ -21,10 +24,14 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const token = await getSessionToken();
 
-  const [postResult, categoriesResult, tagsResult] = await Promise.all([
+  const [postResult, categoriesResult, tagsResult, previewResult, admin] = await Promise.all([
     getBlogPost(token, id),
     listBlogCategories(token),
     listBlogTags(token),
+    getContentPreview<{ slug: string }>(token, 'blog/posts', id),
+    getCurrentAdmin(token) as Promise<
+      { ok: true; data: AdminProfile } | { ok: false; error: string; status: number }
+    >,
   ]);
 
   if (!postResult.ok) {
@@ -76,12 +83,15 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
   }
 
   const post = postResult.data;
+  const preview = previewResult.ok ? (previewResult.data as ContentPreview<{ slug: string }>) : null;
+  const canPublish = hasPermission(admin.ok ? admin.data : null, 'blog.publish');
+  const canUnpublish = hasPermission(admin.ok ? admin.data : null, 'blog.unpublish');
 
   return (
     <Container width="page" className="py-8">
       <PageHeader
         title={`编辑：${post.title}`}
-        description="修改内容、SEO、分类、标签与封面。删除操作不可恢复。"
+        description="修改内容、SEO、分类、标签与封面。保存只写编辑稿，上线需点「发布」。"
         breadcrumb={
           <Link href="/blog" className="hover:text-foreground">
             博客管理
@@ -97,12 +107,24 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
         <BlogPostForm categories={categoriesResult.data} tags={tagsResult.data} post={post} />
 
         <div className="flex flex-col gap-6">
+          <PublishControls
+            kind="blog/posts"
+            id={post.id}
+            status={preview?.status ?? post.status}
+            publishedVersion={preview?.publishedVersion ?? 0}
+            hasUnpublishedChanges={preview?.hasUnpublishedChanges ?? false}
+            revalidatePaths={['/blog', `/blog/${post.id}/edit`]}
+            canPublish={canPublish}
+            canUnpublish={canUnpublish}
+            publicHref={`/blog/${post.slug}`}
+            previewHref={`/preview/blog/posts/${post.id}`}
+          />
+
           <Card>
             <CardHeader>
               <CardTitle>文章信息</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 text-small">
-              <InfoRow label="状态" value={POST_STATUS_LABELS[post.status]} />
               <InfoRow label="精选" value={post.featured ? '是' : '否'} />
               <InfoRow label="分类" value={post.category?.name ?? '未分类'} />
               <InfoRow

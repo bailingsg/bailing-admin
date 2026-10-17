@@ -8,7 +8,6 @@ import {
   deleteProductImage,
   updateProduct,
   uploadProductImage,
-  type ProductStatus,
 } from '@/lib/products';
 
 /**
@@ -65,13 +64,12 @@ function parseSpecifications(
   }
 }
 
-function isStatus(value: string): value is ProductStatus {
-  return value === 'DRAFT' || value === 'PUBLISHED' || value === 'ARCHIVED';
-}
-
 /**
  * 创建 / 更新产品（id 为 null 时创建）。
  * 与 ProductForm 客户端组件配合（useActionState）。
+ *
+ * Phase 1：**不再提交 status**。创建恒为草稿；已发布产品的保存写入编辑稿，
+ * 上线只能经发布面板（独立权限 products.publish）。
  */
 export async function saveProductAction(
   id: string | null,
@@ -93,15 +91,11 @@ export async function saveProductAction(
   const specifications = parseSpecifications(str(formData, 'specifications'));
   if (!specifications.ok) return { ok: false, error: specifications.error };
 
-  const status = str(formData, 'status') || 'DRAFT';
-  if (!isStatus(status)) return { ok: false, error: '产品状态不合法' };
-
   const body: Record<string, unknown> = {
     name,
     slug,
     categoryId,
     description,
-    status,
     isFeatured: formData.get('isFeatured') === 'on',
   };
 

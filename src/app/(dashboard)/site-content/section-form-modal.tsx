@@ -5,10 +5,7 @@ import { Modal, FormField } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { SectionMediaPicker } from './media-picker';
 import {
-  CONTENT_STATUS_LABELS,
-  CONTENT_STATUSES,
   SITE_PAGE_LABELS,
-  type ContentStatus,
   type SitePageKey,
   type SiteSection,
   type SiteSectionItem,
@@ -317,20 +314,9 @@ export function SectionFormModal({
             />
           </FormField>
 
-          <FormField label="发布状态" htmlFor="section-status" required>
-            <select
-              id="section-status"
-              name="status"
-              defaultValue={section?.status ?? 'DRAFT'}
-              className={inputClass}
-            >
-              {CONTENT_STATUSES.map((s: ContentStatus) => (
-                <option key={s} value={s}>
-                  {CONTENT_STATUS_LABELS[s]}
-                </option>
-              ))}
-            </select>
-          </FormField>
+          <p className="text-caption text-text-muted sm:col-span-2">
+            发布状态与发布时间由列表页的「发布 / 取消发布」按钮控制：保存只更新编辑稿，公开站仍是上一个已发布版本。
+          </p>
 
           {!state.ok && state.error ? (
             <p

@@ -13,7 +13,6 @@ import {
   updateBlogCategory,
   updateBlogPost,
   updateBlogTag,
-  type PostStatus,
 } from '@/lib/blog';
 
 /**
@@ -41,10 +40,6 @@ function str(formData: FormData, key: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function isStatus(value: string): value is PostStatus {
-  return value === 'DRAFT' || value === 'PUBLISHED';
-}
-
 /** 解析隐藏字段中的 JSON 字符串数组（标签 ID 列表） */
 function parseStringArray(raw: string): { ok: true; value: string[] } | { ok: false; error: string } {
   if (!raw) return { ok: true, value: [] };
@@ -59,17 +54,6 @@ function parseStringArray(raw: string): { ok: true; value: string[] } | { ok: fa
   }
 }
 
-/**
- * datetime-local（如 2026-10-14T15:30）→ ISO 8601。
- * 空值返回 null（表示清空发布时间）。
- */
-function toIsoOrNull(raw: string): string | null {
-  if (!raw) return null;
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString();
-}
-
 /* ============================== 文章 ============================== */
 
 /**
@@ -78,6 +62,10 @@ function toIsoOrNull(raw: string): string | null {
  *
  * 说明：表单始终提交全部可空字段——留空即代表「清空该字段」，
  * 服务端据此发送 null（后端 PATCH 的三态语义：缺省=不变、null=清空）。
+ *
+ * Phase 1：表单**不再提交 status / publishedAt**——发布态只能经
+ * 「发布 / 取消发布」动作变更，发布时间由服务端在发布时写入。
+ * 已发布文章保存时后端只更新编辑稿，公开站保持上一个已发布版本。
  */
 export async function saveBlogPostAction(
   id: string | null,
@@ -93,9 +81,6 @@ export async function saveBlogPostAction(
     return { ok: false, error: '请填写文章正文' };
   }
 
-  const status = str(formData, 'status') || 'DRAFT';
-  if (!isStatus(status)) return { ok: false, error: '文章状态不合法' };
-
   const tagIds = parseStringArray(str(formData, 'tagIdsJson'));
   if (!tagIds.ok) return { ok: false, error: tagIds.error };
 
@@ -103,7 +88,6 @@ export async function saveBlogPostAction(
     title,
     slug,
     content,
-    status,
     featured: formData.get('featured') === 'on',
     excerpt: str(formData, 'excerpt') || null,
     categoryId: str(formData, 'categoryId') || null,
@@ -119,14 +103,6 @@ export async function saveBlogPostAction(
     twitterTitle: str(formData, 'twitterTitle') || null,
     twitterDescription: str(formData, 'twitterDescription') || null,
   };
-
-  // 发布时间：创建时留空 → 不提交该字段（后端按状态自动决定）；编辑时留空 → 显式清空
-  const publishedAtRaw = str(formData, 'publishedAt');
-  if (publishedAtRaw) {
-    body.publishedAt = toIsoOrNull(publishedAtRaw);
-  } else if (id) {
-    body.publishedAt = null;
-  }
 
   const token = await getSessionToken();
   const result = id ? await updateBlogPost(token, id, body) : await createBlogPost(token, body);

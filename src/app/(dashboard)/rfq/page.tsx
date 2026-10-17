@@ -7,12 +7,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/format';
 import {
   getRfqList,
-  isAdminTokenConfigured,
   RFQ_STATUS_LABELS,
   RFQ_STATUSES,
   type RfqListItem,
   type RfqStatus,
 } from '@/lib/rfq';
+import { getSessionToken } from '@/lib/session';
 import { RfqStatusBadge } from './status-badge';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +31,7 @@ function isStatus(value: string | undefined): value is RfqStatus {
 /**
  * RFQ 询盘列表。
  *
- * 数据来自后端 GET /api/v1/rfq（受 ADMIN_API_TOKEN 保护）。
+ * 数据来自后端 GET /api/v1/rfq（JWT + rfq.read 权限）。
  * 移动端渲染为卡片列表，桌面端渲染为表格 —— 均不产生横向滚动。
  */
 export default async function RfqListPage({
@@ -43,18 +43,15 @@ export default async function RfqListPage({
   const page = Math.max(1, Number.parseInt(params.page ?? '1', 10) || 1);
   const status = isStatus(params.status) ? params.status : undefined;
 
-  const result = await getRfqList({ page, pageSize: PAGE_SIZE, status });
+  const token = await getSessionToken();
+
+  const result = await getRfqList(token, { page, pageSize: PAGE_SIZE, status });
 
   return (
     <Container width="page" className="py-8">
       <PageHeader
         title="RFQ 询盘管理"
         description="海外采购商通过官网提交的询价请求。点击任意记录查看详情并更新跟进状态。"
-        actions={
-          <Badge variant={isAdminTokenConfigured() ? 'success' : 'warning'}>
-            {isAdminTokenConfigured() ? '已配置访问令牌' : '未配置 ADMIN_API_TOKEN'}
-          </Badge>
-        }
       />
 
       {/* 状态筛选 */}

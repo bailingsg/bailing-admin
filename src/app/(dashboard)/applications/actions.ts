@@ -4,12 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { getSessionToken } from '@/lib/session';
 import { listMedia, type MediaAsset } from '@/lib/media';
 import { listProducts, type CmsProductListItem } from '@/lib/products';
-import {
-  createApplication,
-  deleteApplication,
-  updateApplication,
-  type ContentStatus,
-} from '@/lib/enterprise';
+import { createApplication, deleteApplication, updateApplication } from '@/lib/enterprise';
 
 /**
  * 产品应用场景 CMS 服务端 Actions（Phase 4.5）。
@@ -34,10 +29,6 @@ export interface SimpleFormState {
 function str(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function isStatus(value: string): value is ContentStatus {
-  return value === 'DRAFT' || value === 'PUBLISHED';
 }
 
 /** 解析隐藏字段中的产品 ID 数组 JSON */
@@ -66,16 +57,13 @@ export async function saveApplicationAction(
   if (!name || name.length < 2) return { ok: false, error: '请填写场景名称（至少 2 个字符）' };
   if (!slug) return { ok: false, error: '请填写 URL 标识（slug）' };
 
-  const status = str(formData, 'status') || 'DRAFT';
-  if (!isStatus(status)) return { ok: false, error: '发布状态不合法' };
-
   const productIds = parseIdArray(str(formData, 'productIdsJson'));
   if (!productIds.ok) return { ok: false, error: productIds.error };
 
+  // Phase 1：不再提交 status / publishedAt——发布态只能经「发布 / 取消发布」变更
   const body: Record<string, unknown> = {
     name,
     slug,
-    status,
     summary: str(formData, 'summary') || null,
     description: str(formData, 'description') || null,
     coverMediaId: str(formData, 'coverMediaId') || null,
@@ -86,13 +74,6 @@ export async function saveApplicationAction(
     // 整体替换关联产品集合
     products: productIds.value.map((productId, index) => ({ productId, sortOrder: index })),
   };
-
-  const publishedAtRaw = str(formData, 'publishedAt');
-  if (publishedAtRaw) {
-    body.publishedAt = new Date(publishedAtRaw).toISOString();
-  } else if (id) {
-    body.publishedAt = null;
-  }
 
   const token = await getSessionToken();
   const result = id ? await updateApplication(token, id, body) : await createApplication(token, body);
