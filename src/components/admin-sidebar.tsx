@@ -49,6 +49,8 @@ const NAV_ITEMS: NavItem[] = [
     hint: '轮询与倾斜',
     permissions: ['lead_distribution.read'],
   },
+  { href: '/samples', label: 'Samples', hint: '样品管理', permissions: ['samples.read'] },
+  { href: '/orders', label: 'Orders', hint: '订单管理', permissions: ['orders.read'] },
   { href: '/contacts', label: '员工联系方式', hint: '对外联系人', permissions: ['contacts.read'] },
   { href: '/accounts', label: '账号管理', hint: '员工账号', permissions: ['accounts.read'] },
   { href: '/roles', label: '角色与权限', hint: 'RBAC', permissions: ['roles.read'] },

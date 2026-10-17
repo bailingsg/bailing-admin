@@ -94,8 +94,10 @@ export async function authorizedRequest<T>(
   token: string | null,
   init?: RequestInit,
 ): Promise<ApiResult<T>> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
+  // FormData 请求让 fetch 自行生成 multipart boundary，不能强制 JSON 头
+  if (!(init?.body instanceof FormData)) headers['Content-Type'] = 'application/json';
 
   try {
     const response = await fetch(`${API_BASE}${path}`, {
