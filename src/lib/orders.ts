@@ -66,6 +66,8 @@ export interface OrderListQuery {
   page?: number;
   limit?: number;
   keyword?: string;
+  /** 订单编号（精确查询） */
+  code?: string;
   country?: string;
   salespersonId?: string;
   orderedFrom?: string;
@@ -74,6 +76,8 @@ export interface OrderListQuery {
 }
 
 export interface OrderInput {
+  /** 订单编号：业务员手动填写，全系统唯一（编辑不可改） */
+  code: string;
   customerName: string;
   country: string;
   requirement: string;
@@ -85,7 +89,7 @@ export interface OrderInput {
   attachmentIds?: string[];
 }
 
-export interface OrderUpdateInput extends OrderInput {
+export interface OrderUpdateInput extends Omit<OrderInput, 'code'> {
   removeAttachmentIds?: string[];
 }
 
@@ -99,6 +103,7 @@ export function listOrders(
   if (query.page) params.set('page', String(query.page));
   if (query.limit) params.set('limit', String(query.limit));
   if (query.keyword) params.set('keyword', query.keyword);
+  if (query.code) params.set('code', query.code.trim());
   if (query.country) params.set('country', query.country);
   if (query.salespersonId) params.set('salespersonId', query.salespersonId);
   if (query.orderedFrom) params.set('orderedFrom', query.orderedFrom);

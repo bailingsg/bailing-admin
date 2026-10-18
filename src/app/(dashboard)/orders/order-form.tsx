@@ -16,14 +16,18 @@ import { PhotoUploader } from './photo-uploader';
 import { createOrderAction, updateOrderAction } from './actions';
 
 /**
- * 订单新建 / 编辑表单（Phase 5.2）。
+ * 订单新建 / 编辑表单（Phase 5.2 / 5.3）。
  *
  * 硬性约束：
  *   · 不提供业务员字段——恒为当前登录用户（后端从会话取并强制）；
- *   · 订单编号由后端生成，表单无编号字段；
+ *   · 订单编号（Phase 5.3）：新建必填、业务员手动填写、全系统唯一；
+ *     编辑时只读展示原值，不允许修改（避免关联数据与业务编号不一致）；
  *   · 金额与币种分列；币种仅 CNY / USD / EUR；
  *   · 照片先上传（临时态）再以 attachmentIds 关联；编辑时可移除已有照片。
  */
+
+/** 与后端 ORDER_CODE_PATTERN 一致的订单编号规则：trim 首尾 + 单空格分隔 + 无控制字符 */
+const ORDER_CODE_RULE = /^[\p{L}\p{N}\-_.\/#]+(?: [\p{L}\p{N}\-_.\/#]+)*$/u;
 
 function toLocalInput(iso: string): string {
   const date = new Date(iso);
@@ -44,6 +48,7 @@ export function OrderForm({ mode, order }: { mode: 'create' | 'edit'; order?: Or
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
 
+  const [code, setCode] = React.useState(order?.code ?? '');
   const [customerName, setCustomerName] = React.useState(order?.customerName ?? '');
   const [country, setCountry] = React.useState(order?.country ?? '');
   const [requirement, setRequirement] = React.useState(order?.requirement ?? '');
@@ -63,6 +68,7 @@ export function OrderForm({ mode, order }: { mode: 'create' | 'edit'; order?: Or
 
   function reset() {
     setError(null);
+    setCode(order?.code ?? '');
     setCustomerName(order?.customerName ?? '');
     setCountry(order?.country ?? '');
     setRequirement(order?.requirement ?? '');
@@ -74,6 +80,14 @@ export function OrderForm({ mode, order }: { mode: 'create' | 'edit'; order?: Or
   }
 
   function validate(): string | null {
+    const trimmedCode = code.trim();
+    if (mode === 'create') {
+      if (!trimmedCode) return '请填写订单编号';
+      if (trimmedCode.length > 64) return '订单编号长度不能超过 64';
+      if (!ORDER_CODE_RULE.test(trimmedCode)) {
+        return '订单编号仅支持字母、数字及 - _ / . # 与单个空格';
+      }
+    }
     if (!customerName.trim()) return '请填写客户名称';
     if (!country.trim()) return '请填写国家/地区';
     if (!requirement.trim()) return '请填写客户需求';
@@ -101,7 +115,7 @@ export function OrderForm({ mode, order }: { mode: 'create' | 'edit'; order?: Or
       return;
     }
 
-    const payload = {
+    const fields = {
       customerName: customerName.trim(),
       country: country.trim(),
       requirement: requirement.trim(),
@@ -114,11 +128,12 @@ export function OrderForm({ mode, order }: { mode: 'create' | 'edit'; order?: Or
     };
 
     startTransition(async () => {
+      // 编辑为全量更新但不含订单编号（后端 UpdateOrderDto 无 code，创建后不可改）
       const result =
         mode === 'create'
-          ? await createOrderAction(payload)
+          ? await createOrderAction({ ...fields, code: code.trim() })
           : await updateOrderAction(order!.id, {
-              ...payload,
+              ...fields,
               removeAttachmentIds: [...initialAttachmentIds].filter((id) => !photos.some((p) => p.id === id)),
             });
 
@@ -163,8 +178,8 @@ export function OrderForm({ mode, order }: { mode: 'create' | 'edit'; order?: Or
         title={mode === 'create' ? '新增订单' : '编辑订单'}
         description={
           mode === 'create'
-            ? '订单编号由系统生成，业务员自动关联当前登录账号。'
-            : '业务员不可修改；提交后字段为全量更新。'
+            ? '请填写业务订单编号（全系统唯一），业务员自动关联当前登录账号。'
+            : '业务员与订单编号不可修改；提交后字段为全量更新。'
         }
         maxWidth="lg"
         footer={
@@ -184,6 +199,31 @@ export function OrderForm({ mode, order }: { mode: 'create' | 'edit'; order?: Or
               {error}
             </p>
           ) : null}
+
+          {mode === 'create' ? (
+            <FormField
+              label="订单编号"
+              htmlFor="order-code"
+              required
+              hint="必填，全系统唯一；支持字母、数字及 - _ / . #"
+            >
+              <Input
+                id="order-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                maxLength={64}
+                placeholder="如：BW-2026-0001"
+                required
+              />
+            </FormField>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-small font-medium text-foreground">订单编号（不可修改）</span>
+              <p className="rounded-md border border-border bg-surface px-3 py-2 text-small text-text-secondary">
+                {order?.code}
+              </p>
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="客户名称" htmlFor="order-customer" required>

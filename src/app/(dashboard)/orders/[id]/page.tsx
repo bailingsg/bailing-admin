@@ -13,6 +13,7 @@ import {
   orderPhotoUrl,
   type OrderItem,
 } from '@/lib/orders';
+import { formatQuantity, listOrderInventory } from '@/lib/inventory';
 import { OrderForm } from '../order-form';
 
 export const dynamic = 'force-dynamic';
@@ -29,12 +30,17 @@ export default async function OrderDetailPage({
 }) {
   const { id } = await params;
   const token = await getSessionToken();
-  const [me, result] = await Promise.all([getCurrentAdmin(token), getOrder(token, id)]);
+  const [me, result, inventoryResult] = await Promise.all([
+    getCurrentAdmin(token),
+    getOrder(token, id),
+    listOrderInventory(token, id),
+  ]);
 
   // 不存在、或无权限查看（业务员越权）一律 404，不泄漏订单存在性
   if (!result.ok || result.data.id !== id) notFound();
   const order: OrderItem = result.data;
   const isAdmin = me.ok && me.data.isSuperAdmin;
+  const inventoryItems = inventoryResult.ok ? inventoryResult.data : [];
 
   return (
     <Container width="page" className="py-8">
@@ -48,6 +54,12 @@ export default async function OrderDetailPage({
               className="inline-flex h-9 items-center rounded-md border border-border-strong bg-background px-3.5 text-small font-medium text-foreground transition-colors hover:bg-accent"
             >
               返回列表
+            </Link>
+            <Link
+              href={`/inventory/new?orderId=${order.id}`}
+              className="inline-flex h-9 items-center rounded-md bg-primary px-3.5 text-small font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+            >
+              新增库存
             </Link>
             <OrderForm mode="edit" order={order} />
           </div>
@@ -148,6 +160,48 @@ export default async function OrderDetailPage({
                       <p className="mt-1 truncate text-caption text-text-muted" title={attachment.originalName}>
                         {attachment.originalName}
                       </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-body font-semibold text-foreground">
+                  关联库存（{inventoryItems.length}）
+                </h2>
+                <Link
+                  href={`/inventory/new?orderId=${order.id}`}
+                  className="inline-flex h-8 items-center rounded-md border border-border-strong bg-background px-3 text-small text-foreground hover:bg-accent"
+                >
+                  新增库存
+                </Link>
+              </div>
+              <p className="mt-1 text-caption text-text-muted">
+                点击「新增库存」创建的记录会自动关联本订单；订单号由系统带入，无需重复输入。
+              </p>
+              {inventoryItems.length === 0 ? (
+                <p className="mt-4 text-small text-text-secondary">暂无关联库存</p>
+              ) : (
+                <ul className="mt-4 divide-y divide-border rounded-md border border-border">
+                  {inventoryItems.map((item) => (
+                    <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                      <div className="flex flex-col">
+                        <Link
+                          href={`/inventory/${item.id}`}
+                          className="text-small font-medium text-primary hover:underline"
+                        >
+                          {item.code}
+                        </Link>
+                        <span className="text-caption text-text-muted">
+                          {item.productName} · {item.location}
+                        </span>
+                      </div>
+                      <span className="text-small text-foreground">
+                        {formatQuantity(item.quantity, item.unit)}
+                      </span>
                     </li>
                   ))}
                 </ul>

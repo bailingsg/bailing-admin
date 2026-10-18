@@ -34,6 +34,7 @@ export default async function OrdersListPage({
   searchParams: Promise<{
     page?: string;
     keyword?: string;
+    code?: string;
     country?: string;
     closedState?: string;
     salespersonId?: string;
@@ -42,6 +43,7 @@ export default async function OrdersListPage({
   const params = await searchParams;
   const page = Math.max(1, Number.parseInt(params.page ?? '1', 10) || 1);
   const keyword = params.keyword?.trim() || undefined;
+  const code = params.code?.trim() || undefined;
   const country = params.country?.trim() || undefined;
   const closedState =
     params.closedState === 'closed' || params.closedState === 'open' ? params.closedState : undefined;
@@ -50,7 +52,7 @@ export default async function OrdersListPage({
   const token = await getSessionToken();
   const [me, result, salesResult] = await Promise.all([
     getCurrentAdmin(token),
-    listOrders(token, { page, limit: PAGE_SIZE, keyword, country, closedState, salespersonId }),
+    listOrders(token, { page, limit: PAGE_SIZE, keyword, code, country, closedState, salespersonId }),
     // 管理员可按业务员筛选：候选来自账号列表中的 SALES 角色账号
     listAccounts(token, { isActive: true, limit: 100 }),
   ]);
@@ -66,6 +68,18 @@ export default async function OrdersListPage({
   }
 
   const totalPages = result.ok ? Math.max(1, result.data.totalPages) : 1;
+
+  // 分页链接保留筛选条件
+  const filterQuery = [
+    keyword ? `keyword=${encodeURIComponent(keyword)}` : '',
+    code ? `code=${encodeURIComponent(code)}` : '',
+    country ? `country=${encodeURIComponent(country)}` : '',
+    closedState ? `closedState=${closedState}` : '',
+    salespersonId ? `salespersonId=${encodeURIComponent(salespersonId)}` : '',
+  ]
+    .filter(Boolean)
+    .join('&');
+  const hrefFor = (target: number) => `/orders?page=${target}${filterQuery ? `&${filterQuery}` : ''}`;
 
   return (
     <Container width="page" className="py-8">
@@ -96,6 +110,19 @@ export default async function OrdersListPage({
             defaultValue={keyword ?? ''}
             placeholder="订单编号 / 客户名称 / 需求"
             className="h-9 w-full rounded-md border border-border-strong bg-background px-3 text-small outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="flex min-w-44 flex-col gap-1.5">
+          <label htmlFor="code" className="text-small font-medium text-foreground">
+            订单编号
+          </label>
+          <input
+            id="code"
+            name="code"
+            type="search"
+            defaultValue={code ?? ''}
+            placeholder="按订单编号精确查询"
+            className="h-9 w-full rounded-md border border-border-strong bg-background px-3 text-small"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -300,11 +327,7 @@ export default async function OrdersListPage({
       {result.ok && result.data.total > PAGE_SIZE ? (
         <nav className="mt-6 flex items-center justify-between" aria-label="分页">
           <Link
-            href={`/orders?page=${page - 1}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}${
-              country ? `&country=${encodeURIComponent(country)}` : ''
-            }${closedState ? `&closedState=${closedState}` : ''}${
-              salespersonId ? `&salespersonId=${encodeURIComponent(salespersonId)}` : ''
-            }`}
+            href={hrefFor(page - 1)}
             aria-disabled={page <= 1}
             className={`inline-flex h-9 items-center rounded-md border border-border-strong px-3.5 text-small ${
               page <= 1 ? 'pointer-events-none text-text-muted' : 'text-foreground hover:bg-accent'
@@ -316,11 +339,7 @@ export default async function OrdersListPage({
             第 {page} / {totalPages} 页
           </span>
           <Link
-            href={`/orders?page=${page + 1}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}${
-              country ? `&country=${encodeURIComponent(country)}` : ''
-            }${closedState ? `&closedState=${closedState}` : ''}${
-              salespersonId ? `&salespersonId=${encodeURIComponent(salespersonId)}` : ''
-            }`}
+            href={hrefFor(page + 1)}
             aria-disabled={page >= totalPages}
             className={`inline-flex h-9 items-center rounded-md border border-border-strong px-3.5 text-small ${
               page >= totalPages
