@@ -87,10 +87,28 @@ export interface OrderInput {
   currency: OrderCurrency;
   note?: string;
   attachmentIds?: string[];
+  /** 表单内联库存（Phase 5.3.2）：有值则后端同事务创建/更新关联库存 */
+  inventory?: OrderInventoryInput;
 }
 
 export interface OrderUpdateInput extends Omit<OrderInput, 'code'> {
   removeAttachmentIds?: string[];
+  /** 显式删除该订单主库存（需用户二次确认；不传则不删除） */
+  removeInventory?: boolean;
+}
+
+/**
+ * 订单表单内联的库存字段（与库存模块同名校验规则）。
+ * 不含 orderId / code：后端按订单上下文写入，不接受客户端指定。
+ */
+export interface OrderInventoryInput {
+  productName: string;
+  productDetail: string;
+  quantity: number;
+  unit: string;
+  location: string;
+  /** 存放日期（YYYY-MM-DD 或 ISO 字符串，后端校验） */
+  storedAt: string;
 }
 
 /* ------------------------------- API ------------------------------- */

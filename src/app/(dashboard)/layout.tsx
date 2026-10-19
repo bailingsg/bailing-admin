@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 import { AdminSidebar } from '@/components/admin-sidebar';
 import { HeaderUser } from '@/components/header-user';
+import { ToastHost } from '@/components/ui/toast';
 import { getCurrentAdmin } from '@/lib/api';
 import { getSessionToken } from '@/lib/session';
 
@@ -41,6 +42,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         </header>
         <main className="min-w-0 flex-1">{children}</main>
       </div>
+      <ToastHost />
     </div>
   );
 }

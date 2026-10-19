@@ -8,6 +8,7 @@ import { getSessionToken } from '@/lib/session';
 import { getCurrentAdmin } from '@/lib/api';
 import { formatQuantity, listInventory } from '@/lib/inventory';
 import { InventoryForm } from './inventory-form';
+import { InventoryRowActions } from './inventory-row-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -253,12 +254,7 @@ export default async function InventoryListPage({
                       <td className="px-4 py-3 text-text-secondary">{item.creatorName ?? '—'}</td>
                     ) : null}
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/inventory/${item.id}`}
-                        className="text-small text-primary hover:underline"
-                      >
-                        详情
-                      </Link>
+                      <InventoryRowActions item={item} />
                     </td>
                   </tr>
                 ))}
@@ -270,38 +266,44 @@ export default async function InventoryListPage({
           <ul className="mt-3 flex flex-col gap-3 lg:hidden">
             {result.data.items.map((item) => (
               <li key={item.id}>
-                <Link href={`/inventory/${item.id}`} className="block">
-                  <Card>
-                    <CardContent className="flex flex-col gap-2 py-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="font-medium text-primary">{item.code}</span>
-                        <Badge variant="muted">{formatQuantity(item.quantity, item.unit)}</Badge>
+                <Card>
+                  <CardContent className="flex flex-col gap-2 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <Link
+                        href={`/inventory/${item.id}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {item.code}
+                      </Link>
+                      <Badge variant="muted">{formatQuantity(item.quantity, item.unit)}</Badge>
+                    </div>
+                    <p className="text-body font-medium text-foreground">{item.productName}</p>
+                    <p className="line-clamp-2 text-small text-text-secondary">{item.productDetail}</p>
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-small">
+                      <div>
+                        <dt className="text-text-muted">存放位置</dt>
+                        <dd className="text-foreground">{item.location}</dd>
                       </div>
-                      <p className="text-body font-medium text-foreground">{item.productName}</p>
-                      <p className="line-clamp-2 text-small text-text-secondary">{item.productDetail}</p>
-                      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-small">
+                      <div>
+                        <dt className="text-text-muted">存放日期</dt>
+                        <dd className="text-foreground">{formatDate(item.storedAt)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-text-muted">关联订单</dt>
+                        <dd className="text-foreground">{item.orderCode ?? '未关联'}</dd>
+                      </div>
+                      {isAdmin ? (
                         <div>
-                          <dt className="text-text-muted">存放位置</dt>
-                          <dd className="text-foreground">{item.location}</dd>
+                          <dt className="text-text-muted">创建人</dt>
+                          <dd className="text-foreground">{item.creatorName ?? '—'}</dd>
                         </div>
-                        <div>
-                          <dt className="text-text-muted">存放日期</dt>
-                          <dd className="text-foreground">{formatDate(item.storedAt)}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-text-muted">关联订单</dt>
-                          <dd className="text-foreground">{item.orderCode ?? '未关联'}</dd>
-                        </div>
-                        {isAdmin ? (
-                          <div>
-                            <dt className="text-text-muted">创建人</dt>
-                            <dd className="text-foreground">{item.creatorName ?? '—'}</dd>
-                          </div>
-                        ) : null}
-                      </dl>
-                    </CardContent>
-                  </Card>
-                </Link>
+                      ) : null}
+                    </dl>
+                    <div className="mt-1 flex items-center justify-end border-t border-border pt-2">
+                      <InventoryRowActions item={item} />
+                    </div>
+                  </CardContent>
+                </Card>
               </li>
             ))}
           </ul>

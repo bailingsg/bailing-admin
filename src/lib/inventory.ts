@@ -159,6 +159,21 @@ export function deleteInventory(
 
 /* ------------------------------- 展示 ------------------------------- */
 
+/**
+ * 该订单的「主库存」= 最早创建的一条（createdAt 升序，同刻按 id 升序）。
+ *
+ * 与后端 OrdersService.update 的选择规则逐字一致：订单表单只回填/更新
+ * 这一条，其余从库存列表额外新增的记录不受影响，避免一次保存误改多条。
+ */
+export function pickPrimaryInventory(items: InventoryItem[]): InventoryItem | null {
+  if (items.length === 0) return null;
+  return [...items].sort((a, b) => {
+    const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    if (diff !== 0) return diff;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  })[0];
+}
+
 /** 数量展示：保留必要小数位（最多三位），不带多余尾零 */
 export function formatQuantity(quantity: string, unit: string): string {
   const value = Number(quantity);

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: '新增订单',
-  description: '录入新订单：业务员自动关联当前登录账号，订单编号由系统生成。',
+  description: '录入新订单：业务员自动关联当前登录账号，订单编号手动填写且全系统唯一。',
 };
 
 export default function NewOrderPage() {
@@ -14,7 +14,7 @@ export default function NewOrderPage() {
     <Container width="page" className="py-8">
       <PageHeader
         title="新增订单"
-        description="业务员自动关联当前登录账号；订单编号由系统生成；照片上传后保存订单时自动关联。"
+        description="业务员自动关联当前登录账号；订单编号手动填写且全系统唯一；可选同步录入关联库存。"
       />
       <div className="mt-6">
         <OrderForm mode="create" />

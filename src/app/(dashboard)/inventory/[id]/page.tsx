@@ -46,7 +46,13 @@ export default async function InventoryDetailPage({
               返回列表
             </Link>
             <InventoryForm mode="edit" item={item} />
-            <DeleteInventoryButton id={item.id} code={item.code} />
+            <DeleteInventoryButton
+              id={item.id}
+              code={item.code}
+              productName={item.productName}
+              quantityText={formatQuantity(item.quantity, item.unit)}
+              location={item.location}
+            />
           </div>
         }
       />

@@ -7,16 +7,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { INVENTORY_UNITS, type InventoryItem } from '@/lib/inventory';
+import { showToast } from '@/components/ui/toast';
 import { createInventoryAction, updateInventoryAction } from './actions';
 
 /**
- * 库存新增 / 编辑表单（Phase 5.3）。
+ * 库存新增 / 编辑表单（Phase 5.3 / 5.3.2）。
  *
  * 硬性约束：
  *   · 库存编号由系统生成，表单无编号字段（编辑时只读展示）；
  *   · 创建人不提供——恒为当前登录用户（后端从会话取并强制）；
  *   · 关联订单可空；从订单详情进入时锁定为当前订单（只读展示订单号）；
- *   · 数量为不小于 0 的数字，最多三位小数（后端 Decimal(14,3) 存储）。
+ *   · 数量为不小于 0 的数字，最多三位小数（后端 Decimal(14,3) 存储）；
+ *   · 保存后的去向（Phase 5.3.2）：
+ *       - 从订单详情进入（带 orderId）→ 回到该订单详情页并提示成功；
+ *       - 其它新增场景 → 留在库存列表（保留当前筛选与页码）并提示成功，
+ *         不再跳转库存详情页。
  */
 
 export interface InventoryFormOrder {
@@ -43,6 +48,8 @@ export function InventoryForm({
   onClose,
   showTrigger = true,
   closeHref,
+  triggerLabel,
+  compact = false,
 }: {
   mode: 'create' | 'edit';
   item?: InventoryItem;
@@ -54,11 +61,18 @@ export function InventoryForm({
   showTrigger?: boolean;
   /** 表单关闭后跳转的地址（订单关联新建页用） */
   closeHref?: string;
+  /** 触发按钮文案（列表行内使用「编辑」） */
+  triggerLabel?: string;
+  /** 紧凑触发按钮（表格行内使用） */
+  compact?: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = React.useState(mode === 'edit' ? (openProp ?? true) : (openProp ?? false));
+  // 默认关闭：只有显式传 open（订单关联新建页）或用户点击触发按钮才弹出，
+  // 避免进入库存详情页时编辑弹窗自动盖住页面。
+  const [open, setOpen] = React.useState(openProp ?? false);
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
+  const submittingRef = React.useRef(false);
 
   const [productName, setProductName] = React.useState(item?.productName ?? '');
   const [productDetail, setProductDetail] = React.useState(item?.productDetail ?? '');
@@ -104,6 +118,7 @@ export function InventoryForm({
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (submittingRef.current) return;
     setError(null);
 
     const invalid = validate();
@@ -124,25 +139,39 @@ export function InventoryForm({
       orderId: linkedOrder ? linkedOrder.id : (item?.orderId ?? null),
     };
 
+    submittingRef.current = true;
     startTransition(async () => {
-      const result =
-        mode === 'create'
-          ? await createInventoryAction(payload)
-          : await updateInventoryAction(item!.id, payload);
+      try {
+        const result =
+          mode === 'create'
+            ? await createInventoryAction(payload)
+            : await updateInventoryAction(item!.id, payload);
 
-      if (!result.ok) {
-        setError(result.error ?? '保存失败');
-        return;
-      }
-      // 订单关联页：保存后返回订单详情；其余场景：跳库存详情 / 刷新列表
-      if (mode === 'create' && linkedOrder && closeHref) {
+        if (!result.ok) {
+          setError(result.error ?? '保存失败');
+          return;
+        }
+
+        // 订单关联页：保存后返回订单详情（Phase 5.3.2 要求保留该入口语义）
+        if (mode === 'create' && linkedOrder && closeHref) {
+          setOpen(false);
+          router.push(`${closeHref}?notice=inventory-created`);
+          return;
+        }
+
         setOpen(false);
-        router.push(closeHref);
-        return;
+        onClose?.();
+        router.refresh();
+
+        if (mode === 'create') {
+          // 新增库存：留在库存列表（当前筛选/页码不变），仅刷新数据并提示
+          showToast('库存已新增，列表已刷新');
+        } else {
+          showToast('库存已更新');
+        }
+      } finally {
+        submittingRef.current = false;
       }
-      close();
-      router.refresh();
-      if (mode === 'create' && !linkedOrder && result.id) router.push(`/inventory/${result.id}`);
     });
   }
 
@@ -166,13 +195,14 @@ export function InventoryForm({
       {mode === 'edit' && showTrigger ? (
         <Button
           type="button"
-          variant="outline"
+          variant={compact ? 'ghost' : 'outline'}
+          size={compact ? 'sm' : 'default'}
           onClick={() => {
             reset();
             setOpen(true);
           }}
         >
-          编辑库存
+          {triggerLabel ?? '编辑库存'}
         </Button>
       ) : null}
       <Modal

@@ -13,7 +13,7 @@ import {
   orderPhotoUrl,
   type OrderItem,
 } from '@/lib/orders';
-import { formatQuantity, listOrderInventory } from '@/lib/inventory';
+import { formatQuantity, listOrderInventory, pickPrimaryInventory } from '@/lib/inventory';
 import { OrderForm } from '../order-form';
 
 export const dynamic = 'force-dynamic';
@@ -23,12 +23,22 @@ export const metadata = {
   description: '订单信息、客户需求、成交状态与订单照片。',
 };
 
+/** 保存成功后的提示文案（通过 ?notice= 传递，刷新即消失） */
+const NOTICE_MESSAGES: Record<string, string> = {
+  'order-created': '订单已创建。',
+  'order-created-inventory': '订单已创建，关联库存已同步生成。',
+  'inventory-created': '库存已新增并关联到本订单。',
+};
+
 export default async function OrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ notice?: string }>;
 }) {
   const { id } = await params;
+  const { notice } = await searchParams;
   const token = await getSessionToken();
   const [me, result, inventoryResult] = await Promise.all([
     getCurrentAdmin(token),
@@ -41,6 +51,8 @@ export default async function OrderDetailPage({
   const order: OrderItem = result.data;
   const isAdmin = me.ok && me.data.isSuperAdmin;
   const inventoryItems = inventoryResult.ok ? inventoryResult.data : [];
+  const primaryInventory = pickPrimaryInventory(inventoryItems);
+  const noticeMessage = notice ? NOTICE_MESSAGES[notice] : undefined;
 
   return (
     <Container width="page" className="py-8">
@@ -61,10 +73,24 @@ export default async function OrderDetailPage({
             >
               新增库存
             </Link>
-            <OrderForm mode="edit" order={order} />
+            <OrderForm
+              mode="edit"
+              order={order}
+              inventory={primaryInventory}
+              inventoryCount={inventoryItems.length}
+            />
           </div>
         }
       />
+
+      {noticeMessage ? (
+        <div
+          role="status"
+          className="mt-6 rounded-lg border border-success-600/30 bg-success-50 px-4 py-3 text-small text-success-600"
+        >
+          {noticeMessage}
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 flex flex-col gap-6">
