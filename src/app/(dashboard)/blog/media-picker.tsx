@@ -2,54 +2,109 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import type { MediaAsset } from '@/lib/media';
-import { fetchMediaForPicker } from './actions';
+import { MEDIA_USAGES, mediaUsageLabel, type MediaAsset, type MediaUsage } from '@/lib/media';
+import { fetchMediaForPicker, uploadMediaWithUsageAction } from './actions';
 
 /**
  * 媒体库选择弹窗（封面 / 正文插图共用）。
  *
- * 博客模块不自行上传文件：本弹窗只读浏览 Phase 4.3 媒体库（/cms/media），
- * 选定后把资产 URL 交给调用方。上传请到「媒体资源」页面完成。
+ * Phase 5.6：
+ *   · 传入 uploadUsage 时提供「上传新图片」入口——上传即自动归类到该用途
+ *     （文章 → 文章，产品 → 产品），无需再去媒体库手动选分类
+ *   · **从库里选择已有图片属于「引用」，不改动该图片的用途分类**
+ *   · 可按用途筛选（默认只看「文章」用途）
  */
 
 interface MediaPickerModalProps {
   open: boolean;
   onClose: () => void;
   onSelect: (asset: MediaAsset) => void;
+  /** 上传入口的自动归类用途；不传则不显示上传按钮（只读浏览媒体库） */
+  uploadUsage?: MediaUsage;
 }
 
-export function MediaPickerModal({ open, onClose, onSelect }: MediaPickerModalProps) {
+export function MediaPickerModal({
+  open,
+  onClose,
+  onSelect,
+  uploadUsage,
+}: MediaPickerModalProps) {
   const [items, setItems] = React.useState<MediaAsset[]>([]);
   const [total, setTotal] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [totalPages, setTotalPages] = React.useState(1);
   const [keyword, setKeyword] = React.useState('');
   const [draftKeyword, setDraftKeyword] = React.useState('');
+  // Phase 5.6：按用途收敛（默认只看「文章」用途，可切「全部」）
+  const [usage, setUsage] = React.useState<MediaUsage | ''>('BLOG');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  // Phase 5.6：直接上传新图片（自动归类为「文章」）
+  const uploadRef = React.useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [uploadError, setUploadError] = React.useState<string | null>(null);
+  const [uploadDone, setUploadDone] = React.useState<string | null>(null);
 
-  const load = React.useCallback(async (targetPage: number, kw: string) => {
-    setLoading(true);
-    setError(null);
-    const result = await fetchMediaForPicker(targetPage, kw);
-    setLoading(false);
-    if (!result.ok) {
-      setError(result.error ?? '加载媒体库失败');
-      setItems([]);
-      return;
-    }
-    setItems(result.items);
-    setTotal(result.total);
-    setPage(targetPage);
-    setTotalPages(Math.max(1, result.totalPages));
-  }, []);
+  const load = React.useCallback(
+    async (targetPage: number, kw: string, nextUsage: MediaUsage | '' = '') => {
+      setLoading(true);
+      setError(null);
+      const result = await fetchMediaForPicker(
+        targetPage,
+        kw,
+        nextUsage === '' ? undefined : nextUsage,
+      );
+      setLoading(false);
+      if (!result.ok) {
+        setError(result.error ?? '加载媒体库失败');
+        setItems([]);
+        return;
+      }
+      setItems(result.items);
+      setTotal(result.total);
+      setPage(targetPage);
+      setTotalPages(Math.max(1, result.totalPages));
+    },
+    [],
+  );
 
   React.useEffect(() => {
     if (!open) return;
-    void load(1, '');
     setKeyword('');
     setDraftKeyword('');
+    setUsage('BLOG');
+    setUploadError(null);
+    setUploadDone(null);
+    void load(1, '', 'BLOG');
   }, [open, load]);
+
+  /** 上传并直接选中：新图片的用途按所在编辑器自动归类 */
+  async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    if (!uploadUsage) return;
+    const file = event.target.files?.[0];
+    // 重置 input，保证连续选同一个文件也能触发 change
+    event.target.value = '';
+    if (!file) return;
+
+    setUploadError(null);
+    setUploadDone(null);
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    const result = await uploadMediaWithUsageAction(uploadUsage, formData);
+    setUploading(false);
+
+    if (!result.ok || !result.asset) {
+      setUploadError(result.error ?? '上传失败');
+      return;
+    }
+
+    setUploadDone(result.asset.originalName);
+    // 新图可能落在当前用途筛选之外：刷新一次列表（不自动切「全部」）
+    void load(1, keyword, usage);
+    onSelect(result.asset);
+    onClose();
+  }
 
   // Esc 关闭
   React.useEffect(() => {
@@ -80,13 +135,55 @@ export function MediaPickerModal({ open, onClose, onSelect }: MediaPickerModalPr
           <div>
             <h2 className="text-body font-semibold text-foreground">从媒体库选择图片</h2>
             <p className="text-caption text-text-muted">
-              共 {total} 个资源 · 需要新图片请先到「媒体资源」页面上传
+              共 {total} 个资源 · 选择已有图片不会改动其用途分类
             </p>
           </div>
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            关闭
-          </Button>
+          <div className="flex items-center gap-2">
+            {uploadUsage ? (
+              <>
+                <input
+                  ref={uploadRef}
+                  id="picker-upload-file"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  className="hidden"
+                  onChange={(event) => void handleUpload(event)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => uploadRef.current?.click()}
+                >
+                  {uploading ? '上传中…' : '上传新图片'}
+                </Button>
+              </>
+            ) : null}
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+              关闭
+            </Button>
+          </div>
         </div>
+
+        {uploadError ? (
+          <p
+            role="alert"
+            className="border-b border-border bg-destructive/10 px-5 py-2 text-small text-destructive"
+          >
+            {uploadError}
+          </p>
+        ) : null}
+        {uploadDone ? (
+          <p
+            role="status"
+            className="border-b border-border bg-success-50 px-5 py-2 text-small text-success-600"
+          >
+            已上传「{uploadDone}」并归类为「
+            {MEDIA_USAGES.find((item) => item.value === uploadUsage)?.label ?? uploadUsage}
+            」，已选中
+          </p>
+        ) : null}
 
         {/* 搜索 */}
         <form
@@ -94,7 +191,7 @@ export function MediaPickerModal({ open, onClose, onSelect }: MediaPickerModalPr
           onSubmit={(event) => {
             event.preventDefault();
             setKeyword(draftKeyword.trim());
-            void load(1, draftKeyword.trim());
+            void load(1, draftKeyword.trim(), usage);
           }}
         >
           <input
@@ -105,6 +202,23 @@ export function MediaPickerModal({ open, onClose, onSelect }: MediaPickerModalPr
             aria-label="搜索媒体"
             className="h-9 min-w-48 flex-1 rounded-md border border-border bg-background px-3 text-small text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40"
           />
+          <select
+            value={usage}
+            aria-label="按用途筛选"
+            onChange={(event) => {
+              const next = event.target.value as MediaUsage | '';
+              setUsage(next);
+              void load(1, keyword, next);
+            }}
+            className="h-9 rounded-md border border-border bg-background px-2 text-small text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <option value="">全部用途</option>
+            {MEDIA_USAGES.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
           <Button type="submit" variant="outline" size="sm" disabled={loading}>
             搜索
           </Button>
@@ -120,7 +234,9 @@ export function MediaPickerModal({ open, onClose, onSelect }: MediaPickerModalPr
             </p>
           ) : items.length === 0 ? (
             <p className="py-10 text-center text-small text-text-secondary">
-              {keyword ? '没有匹配的媒体资源' : '媒体库还是空的，请先到「媒体资源」页面上传图片。'}
+              {keyword || usage
+                ? '当前筛选条件下没有媒体资源，可切到「全部用途」或清空关键词。'
+                : '媒体库还是空的，请先到「媒体资源」页面上传图片。'}
             </p>
           ) : (
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -145,6 +261,9 @@ export function MediaPickerModal({ open, onClose, onSelect }: MediaPickerModalPr
                     <span className="truncate text-caption text-text-secondary" title={asset.originalName}>
                       {asset.originalName}
                     </span>
+                    <span className="w-fit rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                      {mediaUsageLabel(asset.usage)}
+                    </span>
                   </button>
                 </li>
               ))}
@@ -164,7 +283,7 @@ export function MediaPickerModal({ open, onClose, onSelect }: MediaPickerModalPr
                 variant="outline"
                 size="sm"
                 disabled={loading || page <= 1}
-                onClick={() => void load(page - 1, keyword)}
+                onClick={() => void load(page - 1, keyword, usage)}
               >
                 上一页
               </Button>
@@ -173,7 +292,7 @@ export function MediaPickerModal({ open, onClose, onSelect }: MediaPickerModalPr
                 variant="outline"
                 size="sm"
                 disabled={loading || page >= totalPages}
-                onClick={() => void load(page + 1, keyword)}
+                onClick={() => void load(page + 1, keyword, usage)}
               >
                 下一页
               </Button>

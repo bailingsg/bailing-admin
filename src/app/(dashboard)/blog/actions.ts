@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSessionToken } from '@/lib/session';
-import { listMedia, type MediaAsset } from '@/lib/media';
+import { listMedia, uploadMediaAsset, type MediaAsset, type MediaUsage } from '@/lib/media';
 import {
   createBlogCategory,
   createBlogPost,
@@ -28,6 +28,9 @@ export interface BlogFormState {
   /** 保存成功后的文章 ID（供创建后跳转编辑页） */
   savedId?: string;
 }
+
+/** 一篇最多关联的产品数（与后端 MAX_RELATED_PRODUCTS 一致） */
+const MAX_RELATED_PRODUCTS = 4;
 
 export interface SimpleFormState {
   ok: boolean;
@@ -84,6 +87,12 @@ export async function saveBlogPostAction(
   const tagIds = parseStringArray(str(formData, 'tagIdsJson'));
   if (!tagIds.ok) return { ok: false, error: tagIds.error };
 
+  const relatedProductIds = parseStringArray(str(formData, 'relatedProductIdsJson'));
+  if (!relatedProductIds.ok) return { ok: false, error: relatedProductIds.error };
+  if (relatedProductIds.value.length > MAX_RELATED_PRODUCTS) {
+    return { ok: false, error: `一篇最多关联 ${MAX_RELATED_PRODUCTS} 个产品` };
+  }
+
   const body: Record<string, unknown> = {
     title,
     slug,
@@ -93,6 +102,7 @@ export async function saveBlogPostAction(
     categoryId: str(formData, 'categoryId') || null,
     coverMediaId: str(formData, 'coverMediaId') || null,
     tagIds: tagIds.value,
+    relatedProductIds: relatedProductIds.value,
     seoTitle: str(formData, 'seoTitle') || null,
     seoDescription: str(formData, 'seoDescription') || null,
     seoKeywords: str(formData, 'seoKeywords') || null,
@@ -240,17 +250,53 @@ export interface MediaPickerResult {
 }
 
 /**
+ * 上传新图片并自动归类到指定用途（Phase 5.6）。
+ *
+ * 规则：
+ *   · 编辑器里**上传**的图片按所在模块归类（文章 → BLOG，产品 → PRODUCT），
+ *     上传者不需要再去媒体库手动选分类；
+ *   · 从媒体库**选择已有图片**属于「引用」，不改动该图片的用途分类。
+ *
+ * 返回上传后的资产本体，便于调用方直接选中（省一次列表刷新）。
+ */
+export async function uploadMediaWithUsageAction(
+  usage: MediaUsage,
+  formData: FormData,
+): Promise<{ ok: boolean; asset?: MediaAsset; error?: string }> {
+  const file = formData.get('file');
+  if (!file || typeof file === 'string') {
+    return { ok: false, error: '请选择要上传的图片文件' };
+  }
+
+  // 用途由调用方（所在编辑器）决定，客户端不可伪造
+  formData.set('usage', usage);
+
+  const token = await getSessionToken();
+  const result = await uploadMediaAsset(token, formData);
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+  return { ok: true, asset: result.data };
+}
+
+/**
  * 为封面选择器拉取媒体库列表。
  *
  * 博客模块**不自行上传文件**——封面只能从 Phase 4.3 媒体库中挑选，
  * 因此这里只读复用 /cms/media 列表接口。
+ * usage 为用途分类筛选（Phase 5.6），用于快速收敛到「文章 / 产品 / 证书」等图片。
  */
-export async function fetchMediaForPicker(page = 1, keyword = ''): Promise<MediaPickerResult> {
+export async function fetchMediaForPicker(
+  page = 1,
+  keyword = '',
+  usage?: MediaUsage,
+): Promise<MediaPickerResult> {
   const token = await getSessionToken();
   const result = await listMedia(token, {
     page,
     limit: 24,
     keyword: keyword.trim() || undefined,
+    usage,
   });
 
   if (!result.ok) {

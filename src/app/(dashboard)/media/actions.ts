@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSessionToken } from '@/lib/session';
-import { deleteMedia, uploadMediaAsset } from '@/lib/media';
+import { deleteMedia, updateMediaSeo, uploadMediaAsset, type MediaUsage } from '@/lib/media';
 
 /**
  * 媒体资源库服务端 Actions（Phase 4.3）。
@@ -17,7 +17,7 @@ export interface MediaFormState {
   status?: number;
 }
 
-/** 上传媒体（表单 / 拖拽共用：payload 为含 file 字段的 FormData） */
+/** 上传媒体（表单 / 拖拽共用：payload 为含 file + usage 字段的 FormData） */
 export async function uploadMediaAction(
   _prevState: MediaFormState,
   formData: FormData,
@@ -32,6 +32,19 @@ export async function uploadMediaAction(
   if (!result.ok) {
     return { ok: false, error: result.error, status: result.status };
   }
+
+  revalidatePath('/media');
+  return { ok: true };
+}
+
+/** 修改单个媒体的用途分类（空串 = 置为未分类） */
+export async function updateMediaUsageAction(
+  id: string,
+  usage: MediaUsage | '',
+): Promise<{ ok: boolean; error?: string }> {
+  const token = await getSessionToken();
+  const result = await updateMediaSeo(token, id, { usage });
+  if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath('/media');
   return { ok: true };

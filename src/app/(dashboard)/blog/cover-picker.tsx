@@ -69,7 +69,7 @@ export function CoverPicker({ initialMedia }: CoverPickerProps) {
             从媒体库选择封面
           </Button>
           <p className="text-caption text-text-muted">
-            尚未选择封面。需要新图片请先到「媒体资源」页面上传。
+            尚未选择封面。可从媒体库选择已有图片，或直接上传新图片（自动归类为「文章」）。
           </p>
         </div>
       )}
@@ -77,7 +77,12 @@ export function CoverPicker({ initialMedia }: CoverPickerProps) {
       {/* 提交值：媒体资产 ID（空串表示无封面） */}
       <input type="hidden" name="coverMediaId" value={media?.id ?? ''} readOnly />
 
-      <MediaPickerModal open={open} onClose={() => setOpen(false)} onSelect={handleSelect} />
+      <MediaPickerModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onSelect={handleSelect}
+        uploadUsage="BLOG"
+      />
     </div>
   );
 }

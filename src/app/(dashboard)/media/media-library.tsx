@@ -9,10 +9,18 @@ import {
   formatFileSize,
   friendlyDeleteError,
   MEDIA_MAX_SIZE_MB,
+  MEDIA_USAGES,
   mediaTypeLabel,
+  mediaUsageLabel,
   type MediaAsset,
+  type MediaUsage,
 } from '@/lib/media';
-import { deleteMediaAction, uploadMediaAction, type MediaFormState } from './actions';
+import {
+  deleteMediaAction,
+  updateMediaUsageAction,
+  uploadMediaAction,
+  type MediaFormState,
+} from './actions';
 
 /**
  * 媒体资源库（Phase 4.3）。
@@ -20,6 +28,9 @@ import { deleteMediaAction, uploadMediaAction, type MediaFormState } from './act
  * 上传经服务端 Action 转发 multipart 到后端（JWT 不出服务端）；
  * 后端完成 MIME/魔数/大小校验、UUID 文件名与引用检查。
  * 删除为页内两步确认（避免误删被产品引用的媒体）。
+ *
+ * Phase 5.6：新增「用途分类」（文章 / 产品 / 证书 / 工厂 / 生产 / 装车 …），
+ * 上传时选择、卡片上可随时改，用于媒体库筛选与业务选择器收敛。
  */
 
 const UPLOAD_INITIAL_STATE: MediaFormState = { ok: false };
@@ -59,6 +70,8 @@ function UploadZone() {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
+  // 用途分类：上传时一并提交，成功后保留选择（同批图片通常同用途）
+  const [usage, setUsage] = React.useState<MediaUsage | ''>('');
   const [state, formAction, pending] = React.useActionState(
     uploadMediaAction,
     UPLOAD_INITIAL_STATE,
@@ -77,6 +90,8 @@ function UploadZone() {
     }
     const formData = new FormData();
     formData.append('file', file);
+    // 空值不提交，后端按「未分类」处理
+    if (usage) formData.append('usage', usage);
     return formData;
   }
 
@@ -97,6 +112,31 @@ function UploadZone() {
   return (
     <Card>
       <CardContent className="py-5">
+        {/* 用途分类：上传前先选，落库后可在卡片上修改 */}
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <div className="flex min-w-52 flex-col gap-1.5">
+            <label htmlFor="upload-usage" className="text-small font-medium text-foreground">
+              图片用途
+            </label>
+            <select
+              id="upload-usage"
+              value={usage}
+              onChange={(event) => setUsage(event.target.value as MediaUsage | '')}
+              className="h-9 w-full rounded-md border border-border bg-background px-3 text-small text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <option value="">未分类</option>
+              {MEDIA_USAGES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label} · {item.hint}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="pb-1 text-caption text-text-muted">
+            上传后自动归入该用途，可在图片卡片上随时修改
+          </p>
+        </div>
+
         <div
           role="button"
           tabIndex={0}
@@ -191,6 +231,7 @@ function MediaCard({ asset }: { asset: MediaAsset }) {
   const [previewing, setPreviewing] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
+  const [usagePending, startUsageTransition] = React.useTransition();
 
   function handleDelete() {
     setError(null);
@@ -199,6 +240,18 @@ function MediaCard({ asset }: { asset: MediaAsset }) {
       if (!result.ok) {
         setError(friendlyDeleteError(result.error ?? '删除失败'));
         setConfirming(false);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function handleUsageChange(next: MediaUsage | '') {
+    setError(null);
+    startUsageTransition(async () => {
+      const result = await updateMediaUsageAction(asset.id, next);
+      if (!result.ok) {
+        setError(result.error ?? '用途修改失败');
         return;
       }
       router.refresh();
@@ -235,6 +288,15 @@ function MediaCard({ asset }: { asset: MediaAsset }) {
           <span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
             {mediaTypeLabel(asset.mimeType)}
           </span>
+          <span
+            className={`rounded-full px-2 py-0.5 font-medium ${
+              asset.usage
+                ? 'bg-primary/10 text-primary'
+                : 'bg-muted text-text-muted'
+            }`}
+          >
+            {mediaUsageLabel(asset.usage)}
+          </span>
           <span>{formatFileSize(asset.size)}</span>
           {asset.width && asset.height ? (
             <span>
@@ -243,6 +305,25 @@ function MediaCard({ asset }: { asset: MediaAsset }) {
           ) : null}
         </div>
         <p className="text-caption text-text-muted">{formatDateTime(asset.createdAt)}</p>
+
+        {/* 用途分类就地修改（无需进入详情，便于批量整理历史图片） */}
+        <label className="flex items-center gap-2 text-caption text-text-muted">
+          <span className="shrink-0">用途</span>
+          <select
+            value={asset.usage ?? ''}
+            disabled={usagePending}
+            onChange={(event) => handleUsageChange(event.target.value as MediaUsage | '')}
+            aria-label={`修改 ${asset.originalName} 的用途分类`}
+            className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-caption text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-60"
+          >
+            <option value="">未分类</option>
+            {MEDIA_USAGES.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
         {error ? (
           <p role="alert" className="text-caption text-destructive">
@@ -329,6 +410,7 @@ function PreviewModal({ asset, onClose }: { asset: MediaAsset; onClose: () => vo
         </div>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 px-4 py-3 text-small sm:grid-cols-4">
           <Meta label="类型" value={mediaTypeLabel(asset.mimeType)} />
+          <Meta label="用途" value={mediaUsageLabel(asset.usage)} />
           <Meta label="大小" value={formatFileSize(asset.size)} />
           <Meta
             label="尺寸"

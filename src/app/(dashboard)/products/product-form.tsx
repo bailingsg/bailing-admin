@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { RichTextEditor } from '@/components/rich-text-editor';
 import {
   type CmsCategory,
   type CmsProductDetail,
@@ -28,6 +29,16 @@ interface ProductFormProps {
 
 const INITIAL_STATE: ProductFormState = { ok: false };
 
+/**
+ * 简短描述字数上限。
+ *
+ * 与后端 CreateProductDto / UpdateProductDto 的 @MaxLength 保持一致
+ * （bailing-backend/src/modules/cms/products/dto/product.dto.ts）：
+ * 它是列表卡片与 SEO 摘要的唯一来源，历史迁移数据曾灌入 300+ 字段落，
+ * 把前台产品卡片撑到一屏放不下一张。这里定死 100 字。
+ */
+const SHORT_DESCRIPTION_MAX = 100;
+
 export function ProductForm({ categories, product }: ProductFormProps) {
   const router = useRouter();
   const isEdit = product !== undefined;
@@ -39,6 +50,11 @@ export function ProductForm({ categories, product }: ProductFormProps) {
   );
 
   const [state, formAction, pending] = React.useActionState(boundAction, INITIAL_STATE);
+
+  // 简短描述实时字数（输入即刷新；编辑旧数据可能已超限，首次渲染即标红）
+  const [shortDescriptionCount, setShortDescriptionCount] = React.useState(() =>
+    product?.shortDescription ? product.shortDescription.length : 0,
+  );
 
   // 创建成功 → 跳转编辑页（继续上传图片）
   React.useEffect(() => {
@@ -106,7 +122,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-body text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40"
             />
             <p className="text-caption text-text-muted">
-              只能包含小写字母、数字与连字符，决定公开产品页地址 /products/[slug]
+              只能包含小写字母、数字与连字符；公开产品页地址按 id 生成（/products/[id]），
+              slug 用于后台识别与旧链接兼容
             </p>
           </div>
 
@@ -154,27 +171,43 @@ export function ProductForm({ categories, product }: ProductFormProps) {
             <input
               id="shortDescription"
               name="shortDescription"
-              maxLength={500}
+              maxLength={SHORT_DESCRIPTION_MAX}
               defaultValue={product?.shortDescription ?? ''}
               placeholder="一句话描述，用于列表卡片与 SEO 摘要"
+              onChange={(event) => setShortDescriptionCount(event.target.value.length)}
               className="h-10 w-full rounded-md border border-border bg-background px-3 text-body text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40"
             />
+            {/*
+              简短描述上限 100 字：它是列表卡片与 SEO 摘要的唯一来源，
+              超长会把卡片撑到一屏放不下（内容迁移后的实际事故）。
+              这里同时做「输入截断 + 实时计数 + 校验提示」三道约束。
+            */}
+            <p className="text-caption text-text-muted">
+              最多 100 字（{shortDescriptionCount}/{SHORT_DESCRIPTION_MAX}）；超出部分由后端拒绝。
+              旧数据超过 100 字时请在保存前手动精简，否则保存会报 400。
+            </p>
+            {shortDescriptionCount > SHORT_DESCRIPTION_MAX ? (
+              <p className="text-caption text-warning-600">
+                已超出 {shortDescriptionCount - SHORT_DESCRIPTION_MAX} 字，请精简后再保存
+              </p>
+            ) : null}
           </div>
 
+          {/*
+            详细描述改用富文本编辑器（与博客正文同一组件）：
+            · 写入隐藏 input name="description"，HTML 随表单提交
+            · 后端 ProductsService 入库前经 sanitizeRichText 白名单净化
+            · 前台详情页用 product-prose 样式渲染该 HTML
+          */}
           <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label htmlFor="description" required>
-              详细描述
-            </Label>
-            <textarea
-              id="description"
+            <RichTextEditor
               name="description"
-              required
-              minLength={10}
-              maxLength={20000}
-              rows={8}
-              defaultValue={product?.description ?? ''}
-              placeholder="产品详细介绍、规格、应用场景等"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40"
+              initialHtml={product?.description ?? ''}
+              label="详细描述"
+              placeholder="产品详细介绍、规格、应用场景等；可用 H2/H3 分节、列表、表格说明"
+              minHeightClass="min-h-80"
+              hint="支持标题、加粗、列表、表格、链接与媒体库图片；保存时后端会自动过滤不安全标签与属性。"
+              uploadUsage="PRODUCT"
             />
           </div>
         </CardContent>

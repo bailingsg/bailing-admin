@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { getSessionToken } from '@/lib/session';
 import { listBlogCategories, listBlogTags } from '@/lib/blog';
+import { listProducts } from '@/lib/products';
 import { BlogNav } from '../blog-nav';
 import { BlogPostForm } from '../post-form';
 
@@ -17,9 +18,11 @@ export const metadata = {
 /** 新建文章页：分类/标签为下拉与多选数据源 */
 export default async function CreateBlogPostPage() {
   const token = await getSessionToken();
-  const [categoriesResult, tagsResult] = await Promise.all([
+  const [categoriesResult, tagsResult, productsResult] = await Promise.all([
     listBlogCategories(token),
     listBlogTags(token),
+    // 关联产品选择器数据源（失败不阻塞创建：产品为空时选择器给出提示）
+    listProducts(token, { limit: 100 }),
   ]);
 
   if (!categoriesResult.ok) {
@@ -71,7 +74,11 @@ export default async function CreateBlogPostPage() {
       </div>
 
       <div className="mt-6">
-        <BlogPostForm categories={categoriesResult.data} tags={tagsResult.data} />
+        <BlogPostForm
+          categories={categoriesResult.data}
+          tags={tagsResult.data}
+          products={productsResult.ok ? productsResult.data.items : []}
+        />
       </div>
     </Container>
   );

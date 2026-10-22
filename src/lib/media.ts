@@ -12,6 +12,47 @@ import { authorizedRequest, type ApiResult } from './api';
 
 export type MediaCategory = 'IMAGE' | 'DOCUMENT';
 
+/**
+ * 媒体用途分类（Phase 5.6）——回答「这张图用在哪个业务场景」，
+ * 与 category（文件类型）正交。取值对齐站点上实际有图的页面。
+ */
+export type MediaUsage =
+  | 'BLOG'
+  | 'PRODUCT'
+  | 'CERTIFICATE'
+  | 'FACTORY'
+  | 'PRODUCTION'
+  | 'LOADING'
+  | 'EXHIBITION'
+  | 'APPLICATION'
+  | 'SITE'
+  | 'OTHER';
+
+/** 用途选项（顺序即媒体库筛选与上传下拉的展示顺序） */
+export const MEDIA_USAGES: { value: MediaUsage; label: string; hint: string }[] = [
+  { value: 'BLOG', label: '文章', hint: '文章封面 / 正文配图' },
+  { value: 'PRODUCT', label: '产品', hint: '产品详情图库' },
+  { value: 'CERTIFICATE', label: '证书', hint: '认证证书 / 检测报告' },
+  { value: 'FACTORY', label: '工厂', hint: '厂房 / 厂区设施' },
+  { value: 'PRODUCTION', label: '生产', hint: '生产流程 / 生产设备' },
+  { value: 'LOADING', label: '装车', hint: '装柜 / 装车现场' },
+  { value: 'EXHIBITION', label: '展会', hint: '展会与客户来访照片' },
+  { value: 'APPLICATION', label: '应用场景', hint: '应用场景页封面' },
+  { value: 'SITE', label: '站点配图', hint: '首页等结构化分区配图' },
+  { value: 'OTHER', label: '其他', hint: '暂未归类' },
+];
+
+const MEDIA_USAGE_LABELS: Record<MediaUsage, string> = MEDIA_USAGES.reduce(
+  (acc, item) => ({ ...acc, [item.value]: item.label }),
+  {} as Record<MediaUsage, string>,
+);
+
+/** 用途枚举 → 中文标签（未知值回落原文，便于兼容后端新增枚举） */
+export function mediaUsageLabel(usage: string | null | undefined): string {
+  if (!usage) return '未分类';
+  return MEDIA_USAGE_LABELS[usage as MediaUsage] ?? usage;
+}
+
 export interface MediaAsset {
   id: string;
   /** 存储文件名（UUID + 扩展名） */
@@ -32,6 +73,8 @@ export interface MediaAsset {
   description: string | null;
   provider: 'LOCAL' | 'TENCENT_COS';
   category: MediaCategory;
+  /** 业务用途分类（Phase 5.6；null = 未分类） */
+  usage: MediaUsage | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +93,7 @@ export interface ListMediaParams {
   limit?: number;
   keyword?: string;
   category?: MediaCategory;
+  usage?: MediaUsage;
 }
 
 /** 上传大小提示上限（与后端 MAX_MEDIA_FILE_SIZE 保持一致，仅用于界面文案） */
@@ -67,6 +111,7 @@ export function listMedia(
   if (params.limit) search.set('limit', String(params.limit));
   if (params.keyword) search.set('keyword', params.keyword);
   if (params.category) search.set('category', params.category);
+  if (params.usage) search.set('usage', params.usage);
   const query = search.toString();
   return authorizedRequest<PaginatedMedia>(`/cms/media${query ? `?${query}` : ''}`, token);
 }
@@ -76,11 +121,18 @@ export function getMedia(token: string | null, id: string): Promise<ApiResult<Me
   return authorizedRequest<MediaAsset>(`/cms/media/${id}`, token);
 }
 
-/** 更新媒体 SEO 元数据（Phase 5.0：alt / title / caption / description） */
+/** 更新媒体元数据（Phase 5.0 SEO 字段 + Phase 5.6 用途分类） */
 export function updateMediaSeo(
   token: string | null,
   id: string,
-  input: { altText?: string; title?: string; caption?: string; description?: string },
+  input: {
+    altText?: string;
+    title?: string;
+    caption?: string;
+    description?: string;
+    /** 空串 = 置为未分类 */
+    usage?: MediaUsage | '';
+  },
 ): Promise<ApiResult<MediaAsset>> {
   return authorizedRequest<MediaAsset>(`/cms/media/${id}`, token, {
     method: 'PATCH',

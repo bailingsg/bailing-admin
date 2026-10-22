@@ -30,6 +30,28 @@ function str(formData: FormData, key: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/** 简短描述上限（与后端 DTO 的 @MaxLength(100) 一致） */
+const SHORT_DESCRIPTION_MAX = 100;
+
+/**
+ * 富文本可见文字长度。
+ *
+ * contentEditable 的空态不是空串：可能是 `<br>`、`<div><br></div>` 或
+ * 一串空段落。直接看 HTML 长度会把「视觉上空的编辑器」判为合法内容，
+ * 因此校验必须基于去标签后的可见文字。
+ */
+function richTextVisibleLength(html: string): number {
+  return html
+    .replace(/<[^>]*>/g, '') // 去标签
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, ' ')
+    .trim().length;
+}
+
 /** 解析 applications 隐藏字段（TagInput 写入的 JSON 数组） */
 function parseApplications(raw: string): { ok: true; value: string[] } | { ok: false; error: string } {
   if (!raw) return { ok: true, value: [] };
@@ -80,9 +102,23 @@ export async function saveProductAction(
   const slug = str(formData, 'slug');
   const categoryId = str(formData, 'categoryId');
   const description = str(formData, 'description');
+  const shortDescription = str(formData, 'shortDescription');
 
-  if (!name || !slug || !categoryId || !description) {
-    return { ok: false, error: '请填写产品名称、URL 标识、分类与详细描述' };
+  if (!name || !slug || !categoryId) {
+    return { ok: false, error: '请填写产品名称、URL 标识与分类' };
+  }
+
+  // 详细描述：按富文本的「可见文字」判定，避免空编辑器里的 <br>/空段落蒙混过关
+  if (richTextVisibleLength(description) < 10) {
+    return { ok: false, error: '详细描述至少需要 10 个字（不含格式）' };
+  }
+
+  // 简短描述：前置拦截，给出比后端 400 更明确的中文提示
+  if (shortDescription.length > SHORT_DESCRIPTION_MAX) {
+    return {
+      ok: false,
+      error: `简短描述最多 ${SHORT_DESCRIPTION_MAX} 字，当前 ${shortDescription.length} 字，请精简后再保存`,
+    };
   }
 
   const applications = parseApplications(str(formData, 'applicationsJson'));
@@ -99,7 +135,6 @@ export async function saveProductAction(
     isFeatured: formData.get('isFeatured') === 'on',
   };
 
-  const shortDescription = str(formData, 'shortDescription');
   if (shortDescription) body.shortDescription = shortDescription;
   const material = str(formData, 'material');
   if (material) body.material = material;

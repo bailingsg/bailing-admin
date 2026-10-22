@@ -76,10 +76,20 @@ export interface BlogPostListItem {
   updatedAt: string;
 }
 
+export interface BlogRelatedProductRef {
+  id: string;
+  name: string;
+  slug: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'UNPUBLISHED' | 'ARCHIVED';
+}
+
 export interface BlogPostDetail extends BlogPostListItem {
   content: string;
   categoryId: string | null;
   tagIds: string[];
+  /** Phase 5.6：关联产品（最多 4 个，顺序即选择顺序） */
+  relatedProductIds: string[];
+  relatedProducts: BlogRelatedProductRef[];
   coverMedia: BlogCoverMediaRef | null;
   seoTitle: string | null;
   seoDescription: string | null;

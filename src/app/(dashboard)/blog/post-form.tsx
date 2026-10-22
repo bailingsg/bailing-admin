@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { type BlogCategory, type BlogPostDetail, type BlogTag } from '@/lib/blog';
+import { type CmsProductListItem } from '@/lib/products';
 import { saveBlogPostAction, type BlogFormState } from './actions';
 import { RichTextEditor } from './rich-text-editor';
 import { CoverPicker } from './cover-picker';
@@ -15,12 +16,17 @@ import { CoverPicker } from './cover-picker';
  *
  * 保存经服务端 Action 完成，JWT 不出服务端。
  * 正文由 RichTextEditor 写入隐藏字段；封面由 CoverPicker 写入 coverMediaId；
- * 标签由 TagSelector 写入 tagIdsJson。
+ * 标签由 TagSelector 写入 tagIdsJson；关联产品由 RelatedProductsPicker 写入 relatedProductIdsJson。
  */
+
+/** 一篇最多关联的产品数（与后端 MAX_RELATED_PRODUCTS 一致） */
+const MAX_RELATED_PRODUCTS = 4;
 
 interface BlogPostFormProps {
   categories: BlogCategory[];
   tags: BlogTag[];
+  /** 可关联的产品（最多取前 100 个，供选择器本地搜索） */
+  products: CmsProductListItem[];
   /** 编辑模式传入文章详情；创建模式为 undefined */
   post?: BlogPostDetail;
 }
@@ -33,7 +39,7 @@ const inputClass =
 const textareaClass =
   'w-full rounded-md border border-border bg-background px-3 py-2 text-body text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40';
 
-export function BlogPostForm({ categories, tags, post }: BlogPostFormProps) {
+export function BlogPostForm({ categories, tags, products, post }: BlogPostFormProps) {
   const router = useRouter();
   const isEdit = post !== undefined;
 
@@ -155,19 +161,28 @@ export function BlogPostForm({ categories, tags, post }: BlogPostFormProps) {
           <CardTitle>文章正文</CardTitle>
         </CardHeader>
         <CardContent>
-          <RichTextEditor name="content" initialHtml={post?.content ?? ''} />
+          <RichTextEditor
+            name="content"
+            initialHtml={post?.content ?? ''}
+            uploadUsage="BLOG"
+          />
         </CardContent>
       </Card>
 
-      {/* ---------------------------- 封面与标签 ---------------------------- */}
+      {/* ---------------------------- 封面 / 标签 / 关联产品 ---------------------------- */}
       <Card>
         <CardHeader>
-          <CardTitle>封面与标签</CardTitle>
+          <CardTitle>封面、标签与关联产品</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-6">
           <CoverPicker initialMedia={post?.coverMedia ?? null} />
 
           <TagSelector tags={tags} initialTagIds={post?.tagIds ?? []} />
+
+          <RelatedProductsPicker
+            products={products}
+            initialSelectedIds={post?.relatedProductIds ?? []}
+          />
         </CardContent>
       </Card>
 
@@ -368,6 +383,170 @@ function TagSelector({ tags, initialTagIds }: { tags: BlogTag[]; initialTagIds: 
       )}
       <p className="text-caption text-text-muted">已选 {selected.length} 个标签（最多 30 个）</p>
       <input type="hidden" name="tagIdsJson" value={JSON.stringify(selected)} readOnly />
+    </div>
+  );
+}
+
+/* --------------------------- RelatedProductsPicker --------------------------- */
+
+const PRODUCT_STATUS_LABELS: Record<CmsProductListItem['status'], string> = {
+  DRAFT: '草稿',
+  PUBLISHED: '已发布',
+  UNPUBLISHED: '已下架',
+  ARCHIVED: '已归档',
+};
+
+/**
+ * 关联产品选择器（Phase 5.6）。
+ *
+ * 前台文章详情页的「相关产品」区块直接消费本字段，最多 4 个、按选择顺序展示。
+ * 只写隐藏字段 relatedProductIdsJson，保存逻辑在服务端 Action。
+ * 未发布产品可被选择（便于排期），但前台不会展示——此处用状态标签提示。
+ */
+function RelatedProductsPicker({
+  products,
+  initialSelectedIds,
+}: {
+  products: CmsProductListItem[];
+  initialSelectedIds: string[];
+}) {
+  const [selected, setSelected] = React.useState<string[]>(initialSelectedIds);
+  const [query, setQuery] = React.useState('');
+
+  const byId = React.useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  const selectedProducts = selected
+    .map((id) => byId.get(id))
+    .filter((p): p is CmsProductListItem => p !== undefined);
+
+  const candidates = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return products
+      .filter((product) => !selected.includes(product.id))
+      .filter((product) =>
+        q === ''
+          ? true
+          : product.name.toLowerCase().includes(q) || product.slug.toLowerCase().includes(q),
+      )
+      .slice(0, 8);
+  }, [products, selected, query]);
+
+  const reachedLimit = selected.length >= MAX_RELATED_PRODUCTS;
+
+  function add(id: string) {
+    setSelected((current) =>
+      current.includes(id) || current.length >= MAX_RELATED_PRODUCTS ? current : [...current, id],
+    );
+    setQuery('');
+  }
+
+  function remove(id: string) {
+    setSelected((current) => current.filter((item) => item !== id));
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <Label htmlFor="related-products-search">关联产品</Label>
+
+      {selectedProducts.length > 0 ? (
+        <ol className="flex flex-col gap-2">
+          {selectedProducts.map((product, index) => (
+            <li
+              key={product.id}
+              className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2"
+            >
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-caption font-medium text-primary">
+                  {index + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-small text-foreground" title={product.name}>
+                  {product.name}
+                </span>
+                <span
+                  className="hidden max-w-56 shrink-0 truncate text-caption text-text-muted sm:inline"
+                  title={`/${product.slug}`}
+                >
+                  /{product.slug}
+                </span>
+                {product.status !== 'PUBLISHED' ? (
+                  <span className="shrink-0 rounded-full border border-border-strong bg-muted px-2 py-0.5 text-caption font-medium text-text-secondary">
+                    {PRODUCT_STATUS_LABELS[product.status]}·前台不展示
+                  </span>
+                ) : null}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="shrink-0"
+                onClick={() => remove(product.id)}
+                aria-label={`移除关联产品 ${product.name}`}
+              >
+                移除
+              </Button>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="text-caption text-text-muted">
+          还没有关联产品。关联后会在文章详情页底部展示「相关产品」卡片。
+        </p>
+      )}
+
+      {products.length === 0 ? (
+        <p className="text-caption text-text-secondary">
+          产品库为空或无法读取产品列表，请确认后端与产品数据。
+        </p>
+      ) : reachedLimit ? (
+        <p className="text-caption text-text-muted">
+          已达上限 {MAX_RELATED_PRODUCTS} 个，如需更换请先移除其中一个。
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <input
+            id="related-products-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="搜索产品名称或 slug 后点击添加"
+            className={inputClass}
+          />
+          {query.trim() !== '' ? (
+            candidates.length > 0 ? (
+              <ul className="max-h-56 overflow-y-auto rounded-md border border-border">
+                {candidates.map((product) => (
+                  <li key={product.id} className="border-b border-border last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => add(product.id)}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left outline-none hover:bg-accent focus-visible:bg-accent"
+                    >
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate text-small text-foreground">{product.name}</span>
+                        <span className="truncate text-caption text-text-muted">/{product.slug}</span>
+                      </span>
+                      <span className="shrink-0 text-caption text-text-secondary">
+                        {PRODUCT_STATUS_LABELS[product.status]}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-caption text-text-muted">没有匹配的产品。</p>
+            )
+          ) : null}
+        </div>
+      )}
+
+      <p className="text-caption text-text-muted">
+        已选 {selected.length} / {MAX_RELATED_PRODUCTS} 个（前台按此顺序展示，仅已发布产品可见）
+      </p>
+      <input
+        type="hidden"
+        name="relatedProductIdsJson"
+        value={JSON.stringify(selected)}
+        readOnly
+      />
     </div>
   );
 }

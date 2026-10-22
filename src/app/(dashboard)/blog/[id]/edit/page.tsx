@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/format';
 import { getSessionToken } from '@/lib/session';
 import { getBlogPost, listBlogCategories, listBlogTags } from '@/lib/blog';
+import { listProducts } from '@/lib/products';
 import { getCurrentAdmin, hasPermission, type AdminProfile } from '@/lib/api';
 import { getContentPreview, type ContentPreview } from '@/lib/publishing';
 import { BlogNav } from '../../blog-nav';
@@ -24,15 +25,18 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const token = await getSessionToken();
 
-  const [postResult, categoriesResult, tagsResult, previewResult, admin] = await Promise.all([
-    getBlogPost(token, id),
-    listBlogCategories(token),
-    listBlogTags(token),
-    getContentPreview<{ slug: string }>(token, 'blog/posts', id),
-    getCurrentAdmin(token) as Promise<
-      { ok: true; data: AdminProfile } | { ok: false; error: string; status: number }
-    >,
-  ]);
+  const [postResult, categoriesResult, tagsResult, productsResult, previewResult, admin] =
+    await Promise.all([
+      getBlogPost(token, id),
+      listBlogCategories(token),
+      listBlogTags(token),
+      // 关联产品选择器数据源（失败不阻塞编辑：选择器会提示产品列表不可用）
+      listProducts(token, { limit: 100 }),
+      getContentPreview<{ slug: string }>(token, 'blog/posts', id),
+      getCurrentAdmin(token) as Promise<
+        { ok: true; data: AdminProfile } | { ok: false; error: string; status: number }
+      >,
+    ]);
 
   if (!postResult.ok) {
     return (
@@ -104,7 +108,12 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <BlogPostForm categories={categoriesResult.data} tags={tagsResult.data} post={post} />
+        <BlogPostForm
+          categories={categoriesResult.data}
+          tags={tagsResult.data}
+          products={productsResult.ok ? productsResult.data.items : []}
+          post={post}
+        />
 
         <div className="flex flex-col gap-6">
           <PublishControls
@@ -130,6 +139,14 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
               <InfoRow
                 label="标签"
                 value={post.tags.length > 0 ? post.tags.map((t) => t.name).join('、') : '—'}
+              />
+              <InfoRow
+                label="关联产品"
+                value={
+                  post.relatedProducts.length > 0
+                    ? post.relatedProducts.map((p) => p.name).join('、')
+                    : '—'
+                }
               />
               <InfoRow
                 label="发布时间"
