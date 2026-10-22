@@ -16,6 +16,7 @@
  */
 
 import { cookies } from 'next/headers';
+import type { NextRequest } from 'next/server';
 import type { AdminRole } from './api';
 
 /** 会话 Cookie 名称 */
@@ -38,6 +39,35 @@ export interface SessionUser {
 export async function getSessionToken(): Promise<string | null> {
   const store = await cookies();
   return store.get(SESSION_COOKIE)?.value ?? null;
+}
+
+/**
+ * 是否为安全上下文（决定 Cookie 是否打 `Secure` 标记）。
+ *
+ * **不能用 `request.nextUrl`**：Next 15 路由处理器里 `nextUrl` 取的是服务器
+ * 内部地址（容器内 127.0.0.1 / localhost），即使 Nginx 透传了
+ * `Host: 43.159.152.116` 也会被判成「安全上下文」→ Cookie 带 `Secure`
+ * → 站点跑纯 HTTP 时浏览器直接丢弃 → 登录后立刻被 middleware 弹回登录页。
+ * 因此按真实请求头判断（Nginx 已设置 X-Forwarded-Proto / Host）。
+ */
+export function isSecureRequest(request: NextRequest): boolean {
+  const proto =
+    request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() ??
+    request.nextUrl.protocol.replace(':', '');
+
+  const rawHost =
+    request.headers.get('x-forwarded-host') ??
+    request.headers.get('host') ??
+    request.nextUrl.hostname;
+  const hostname = rawHost.split(':')[0]?.trim().toLowerCase() ?? '';
+
+  return (
+    proto === 'https' ||
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]' ||
+    hostname === '::1'
+  );
 }
 
 /** 是否存在会话（middleware / 快速判断用） */

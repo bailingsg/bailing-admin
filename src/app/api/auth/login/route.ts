@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from '@/lib/session';
+import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, isSecureRequest } from '@/lib/session';
 
 /**
  * POST /api/auth/login —— 登录代理（同源路由处理器）。
@@ -28,16 +28,7 @@ interface LoginRequestBody {
   password?: unknown;
 }
 
-/** 是否为安全上下文：https 或 localhost（浏览器视 localhost 为可信源，Secure Cookie 生效） */
-function isSecureContext(request: NextRequest): boolean {
-  const { protocol, hostname } = request.nextUrl;
-  return (
-    protocol === 'https:' ||
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '[::1]'
-  );
-}
+/** 是否为安全上下文：见 `isSecureRequest`（按转发头判断，不用 nextUrl） */
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   let body: LoginRequestBody;
@@ -89,7 +80,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // localhost / 127.0.0.1 在主流浏览器均被视为安全上下文，Secure 标记在本地
   // http 下同样生效；通过局域网 IP 访问时自动降级以保证可用（开发环境）。
   // 生产环境（https）始终为 Secure。
-  const secure = isSecureContext(request);
+  const secure = isSecureRequest(request);
   response.cookies.set(SESSION_COOKIE, accessToken, {
     httpOnly: true,
     secure,

@@ -16,7 +16,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG NEXT_PUBLIC_API_BASE_URL="http://43.159.152.116/api/v1"
+# 部署 basePath（生产 /admin；本地留空）。客户端原生 fetch 需据此拼前缀，
+# 见 src/lib/base-path.ts。
+ARG NEXT_PUBLIC_BASE_PATH=""
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
+    NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

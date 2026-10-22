@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { hasSession } from '@/lib/session';
+import { withBasePath } from '@/lib/base-path';
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default async function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <span className="inline-flex size-12 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-border">
-            <Image src="/logo.webp" alt="Bailing Wooden logo" width={44} height={44} priority />
+            <Image src={withBasePath('/logo.webp')} alt="Bailing Wooden logo" width={44} height={44} priority />
           </span>
           <div>
             <h1 className="text-heading-sm font-semibold text-foreground">Bailing Admin</h1>
