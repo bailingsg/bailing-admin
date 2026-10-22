@@ -85,6 +85,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <ProductForm categories={categoriesResult.data} product={product} />
         <div className="flex flex-col gap-6">
+          {/* publicHref 指向前台详情页，按产品 id 拼接（/products/[id]） */}
           <PublishControls
             kind="products"
             id={product.id}
@@ -94,7 +95,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
             revalidatePaths={['/products', `/products/${product.id}/edit`]}
             canPublish={canPublish}
             canUnpublish={canUnpublish}
-            publicHref={`/products/${product.slug}`}
+            publicHref={`/products/${product.id}`}
             previewHref={`/preview/products/${product.id}`}
           />
           <ImageManager productId={product.id} images={product.images} />

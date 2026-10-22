@@ -33,6 +33,10 @@ export interface RfqListItem {
   productName: string | null;
   quantity: string | null;
   status: RfqStatus;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  assigneeEmail: string | null;
+  assignedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

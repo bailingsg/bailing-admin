@@ -36,7 +36,7 @@ const SCHEMA_GUIDE: {
     type: 'PRODUCT',
     label: 'Product',
     description: '产品详情页输出（名称 / 描述 / 图片 / 品牌）。',
-    where: '/products/[slug]',
+    where: '/products/[id]',
   },
   {
     type: 'ARTICLE',

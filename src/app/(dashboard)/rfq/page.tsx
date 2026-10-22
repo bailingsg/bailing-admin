@@ -103,6 +103,7 @@ export default async function RfqListPage({
                   <Th>Country</Th>
                   <Th>Product</Th>
                   <Th>Status</Th>
+                  <Th>分配至</Th>
                   <Th>Created</Th>
                 </tr>
               </thead>
@@ -119,6 +120,15 @@ export default async function RfqListPage({
                     <Td>{item.productName ?? '—'}</Td>
                     <Td>
                       <RfqStatusBadge status={item.status} />
+                    </Td>
+                    <Td>
+                      {item.assigneeName ? (
+                        <span className="text-text-secondary" title={item.assigneeEmail ?? undefined}>
+                          {item.assigneeName}
+                        </span>
+                      ) : (
+                        <span className="text-text-muted">未分配</span>
+                      )}
                     </Td>
                     <Td className="whitespace-nowrap">{formatDateTime(item.createdAt)}</Td>
                   </tr>
@@ -142,6 +152,10 @@ export default async function RfqListPage({
                       <span className="text-caption text-text-muted">
                         {item.country}
                         {item.productName ? ` · ${item.productName}` : ''}
+                      </span>
+                      <span className="text-caption text-text-muted">
+                        分配至：
+                        {item.assigneeName ?? '未分配'}
                       </span>
                       <span className="text-caption text-text-muted">
                         {formatDateTime(item.createdAt)}
