@@ -129,6 +129,59 @@ export function getCurrentAdmin(token: string | null): Promise<ApiResult<AdminPr
   return authorizedRequest<AdminProfile>('/auth/me', token);
 }
 
+/* --------------------------- 我的资料（账号设置） --------------------------- */
+
+/**
+ * 自己的联系方式（GET/PATCH /auth/profile 的 contact 段）。
+ * 刻意不含 internalNote / sortOrder / isLeadContact：那些是管理侧语义。
+ */
+export interface MyContact {
+  displayName: string;
+  jobTitle: string | null;
+  displayEmail: string | null;
+  whatsapp: string | null;
+  phone: string | null;
+  showOnSite: boolean;
+}
+
+/** 我的资料 = 账号档案 + 自己的联系方式（未创建时为 null） */
+export interface MyProfile {
+  profile: AdminProfile;
+  contact: MyContact | null;
+}
+
+/**
+ * 自助修改入参。语义与后端一致：**不传 = 不改**；传空串 = 清空该展示字段。
+ * email 是登录邮箱（修改后下次登录用新邮箱），displayEmail 才是官网展示邮箱。
+ */
+export interface UpdateMyProfileInput {
+  name?: string;
+  jobTitle?: string;
+  email?: string;
+  displayName?: string;
+  displayJobTitle?: string;
+  displayEmail?: string;
+  whatsapp?: string;
+  phone?: string;
+  showOnSite?: boolean;
+}
+
+/** 我的资料（账号设置页回填） */
+export function getMyProfile(token: string | null): Promise<ApiResult<MyProfile>> {
+  return authorizedRequest<MyProfile>('/auth/profile', token);
+}
+
+/** 自助修改我的资料（无需 contacts.update 权限） */
+export function updateMyProfile(
+  token: string | null,
+  input: UpdateMyProfileInput,
+): Promise<ApiResult<MyProfile>> {
+  return authorizedRequest<MyProfile>('/auth/profile', token, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
 /** Dashboard 真实统计 */
 export function getCmsStats(token: string | null): Promise<ApiResult<CmsStats>> {
   return authorizedRequest<CmsStats>('/cms/stats', token);

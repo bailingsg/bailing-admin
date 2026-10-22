@@ -38,7 +38,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <p className="text-small font-semibold tracking-tight text-foreground">
             Bailing Wooden CMS
           </p>
-          <HeaderUser email={admin.email} role={admin.role} />
+          <HeaderUser email={admin.email} role={admin.role} name={admin.name} />
         </header>
         <main className="min-w-0 flex-1">{children}</main>
       </div>

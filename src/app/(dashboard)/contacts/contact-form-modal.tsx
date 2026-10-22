@@ -6,7 +6,12 @@ import { Modal, FormField } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Contact } from '@/lib/rbac';
-import { upsertContactAction } from './actions';
+import {
+  removeContactAvatarAction,
+  uploadContactAvatarAction,
+  upsertContactAction,
+} from './actions';
+import { AVATAR_ACCEPT, AVATAR_MAX_BYTES } from './avatar';
 
 /** 后端同款 WhatsApp 归一化规则：仅数字（可含空格 / 连字符 / 括号），必须以 + 开头，总长 8–15 位 */
 function normalizeWhatsapp(raw: string): string | null {
@@ -16,6 +21,9 @@ function normalizeWhatsapp(raw: string): string | null {
 
 const WHATSAPP_HINT =
   '请填写完整国际号码，以 + 和国家代码开头（如 +8613800138000），仅含数字，可含空格或连字符。';
+
+/** 手机号与 WhatsApp 同规则；二者相互独立，可只填其一 */
+const PHONE_HINT = WHATSAPP_HINT;
 
 /**
  * 联系方式表单弹窗（创建 / 更新共用）。
@@ -39,13 +47,19 @@ export function ContactFormModal({
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
+  const [avatarPending, startAvatarTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
+  const [avatarMessage, setAvatarMessage] = React.useState<string | null>(null);
+  /** 头像预览地址：上传成功后由接口返回值更新，避免整页 refetch 才能看到新图 */
+  const [avatarPreview, setAvatarPreview] = React.useState<string | null>(contact?.avatarUrl ?? null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [adminUserId, setAdminUserId] = React.useState(presetAdminUserId ?? '');
   const [displayName, setDisplayName] = React.useState(contact?.displayName ?? '');
   const [jobTitle, setJobTitle] = React.useState(contact?.jobTitle ?? '');
   const [displayEmail, setDisplayEmail] = React.useState(contact?.displayEmail ?? '');
   const [whatsapp, setWhatsapp] = React.useState(contact?.whatsapp ?? '');
+  const [phone, setPhone] = React.useState(contact?.phone ?? '');
   const [showOnSite, setShowOnSite] = React.useState(contact?.showOnSite ?? true);
   const [isLeadContact, setIsLeadContact] = React.useState(contact?.isLeadContact ?? false);
   const [sortOrder, setSortOrder] = React.useState(String(contact?.sortOrder ?? 0));
@@ -54,15 +68,18 @@ export function ContactFormModal({
   React.useEffect(() => {
     if (!open) return;
     setError(null);
+    setAvatarMessage(null);
     setAdminUserId(contact?.adminUserId ?? presetAdminUserId ?? '');
     setDisplayName(contact?.displayName ?? '');
     setJobTitle(contact?.jobTitle ?? '');
     setDisplayEmail(contact?.displayEmail ?? '');
     setWhatsapp(contact?.whatsapp ?? '');
+    setPhone(contact?.phone ?? '');
     setShowOnSite(contact?.showOnSite ?? true);
     setIsLeadContact(contact?.isLeadContact ?? false);
     setSortOrder(String(contact?.sortOrder ?? 0));
     setInternalNote(contact?.internalNote ?? '');
+    setAvatarPreview(contact?.avatarUrl ?? null);
   }, [open, contact, presetAdminUserId]);
 
   function submit() {
@@ -88,6 +105,11 @@ export function ContactFormModal({
       setError(WHATSAPP_HINT);
       return;
     }
+    const tel = phone.trim();
+    if (tel && !normalizeWhatsapp(tel)) {
+      setError(PHONE_HINT);
+      return;
+    }
     const order = Number.parseInt(sortOrder, 10);
     if (!Number.isFinite(order) || order < 0 || order > 9999) {
       setError('排序必须是 0–9999 之间的整数');
@@ -101,6 +123,7 @@ export function ContactFormModal({
         jobTitle: jobTitle.trim() || undefined,
         displayEmail: email || undefined,
         whatsapp: wa ? normalizeWhatsapp(wa)! : undefined,
+        phone: tel ? normalizeWhatsapp(tel)! : undefined,
         showOnSite,
         isLeadContact,
         sortOrder: order,
@@ -111,6 +134,52 @@ export function ContactFormModal({
         return;
       }
       setOpen(false);
+      router.refresh();
+    });
+  }
+
+  /**
+   * 选择文件后立即上传（不经过「保存」按钮）。
+   * 用 FormData 直传 multipart——转 base64 走 JSON 会被后端拒。
+   */
+  function submitAvatar(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    // 重置 input，保证连续选同一个文件也能触发 change
+    event.target.value = '';
+    if (!file) return;
+    if (!contact) return;
+
+    setAvatarMessage(null);
+    setError(null);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    startAvatarTransition(async () => {
+      const result = await uploadContactAvatarAction(contact.id, formData);
+      if (!result.ok) {
+        setAvatarMessage(result.error);
+        return;
+      }
+      setAvatarPreview(result.data.avatarUrl ?? null);
+      setAvatarMessage('头像已更新（旧头像已从存储中删除）');
+      router.refresh();
+    });
+  }
+
+  /** 移除头像：后端同步删除存储对象，不留孤儿文件 */
+  function removeAvatar() {
+    if (!contact) return;
+    setAvatarMessage(null);
+    setError(null);
+
+    startAvatarTransition(async () => {
+      const result = await removeContactAvatarAction(contact.id);
+      if (!result.ok) {
+        setAvatarMessage(result.error);
+        return;
+      }
+      setAvatarPreview(null);
+      setAvatarMessage('头像已移除');
       router.refresh();
     });
   }
@@ -163,6 +232,78 @@ export function ContactFormModal({
             </div>
           )}
 
+          {/* 头像：仅编辑态可操作（新建时还没有 contactId 可挂载） */}
+          {mode === 'edit' && contact ? (
+            <div className="rounded-md border border-border px-4 py-3">
+              <div className="flex items-center gap-4">
+                {avatarPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- 后台管理界面，动态图床 URL 无需 next/image 优化
+                  <img
+                    src={avatarPreview}
+                    alt={`${displayName || contact.displayName} 的头像`}
+                    className="size-16 shrink-0 rounded-lg border border-border object-cover"
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-surface text-heading-sm text-text-muted"
+                  >
+                    {(displayName || contact.displayName).trim().slice(0, 1) || '?'}
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={avatarPending}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {avatarPending ? '上传中…' : avatarPreview ? '更换头像' : '上传头像'}
+                    </Button>
+                    {avatarPreview ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={avatarPending}
+                        onClick={removeAvatar}
+                      >
+                        移除头像
+                      </Button>
+                    ) : null}
+                  </div>
+                  {/* input 隐藏：由上面的按钮触发，避免原生文件选择器的难看样式 */}
+                  <input
+                    ref={fileInputRef}
+                    id="contact-avatar"
+                    type="file"
+                    accept={AVATAR_ACCEPT}
+                    className="hidden"
+                    onChange={submitAvatar}
+                  />
+                  <p className="text-caption text-text-muted">
+                    仅支持 JPEG / PNG / WebP / AVIF，不超过 {Math.floor(AVATAR_MAX_BYTES / 1024 / 1024)}MB。
+                    更换时新头像上传成功后会**自动删除存储中的旧头像**。
+                  </p>
+                  {avatarMessage ? (
+                    <p
+                      role="status"
+                      className={
+                        /失败|错误|不支持|超过/.test(avatarMessage)
+                          ? 'text-small text-destructive'
+                          : 'text-small text-text-secondary'
+                      }
+                    >
+                      {avatarMessage}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="展示名" htmlFor="contact-display-name" required hint="官网上显示的姓名，可与账号姓名不同">
               <Input
@@ -202,6 +343,15 @@ export function ContactFormModal({
                 value={whatsapp}
                 maxLength={20}
                 onChange={(event) => setWhatsapp(event.target.value)}
+                placeholder="+8613800138000"
+              />
+            </FormField>
+            <FormField label="手机号" htmlFor="contact-phone" hint={PHONE_HINT}>
+              <Input
+                id="contact-phone"
+                value={phone}
+                maxLength={20}
+                onChange={(event) => setPhone(event.target.value)}
                 placeholder="+8613800138000"
               />
             </FormField>

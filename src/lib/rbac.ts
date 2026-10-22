@@ -332,6 +332,12 @@ export interface Contact {
   jobTitle: string | null;
   displayEmail: string | null;
   whatsapp: string | null;
+  /** 对外展示手机号（可直接拨打；与 whatsapp 相互独立） */
+  phone: string | null;
+  /** 头像访问地址；无头像时 null（前台回退姓名首字母） */
+  avatarUrl: string | null;
+  /** 头像存储对象键（仅后台核对用；COS 切换后可据此排查孤儿对象） */
+  avatarKey: string | null;
   showOnSite: boolean;
   isLeadContact: boolean;
   sortOrder: number;
@@ -358,6 +364,7 @@ export interface UpsertContactInput {
   jobTitle?: string;
   displayEmail?: string;
   whatsapp?: string;
+  phone?: string;
   showOnSite?: boolean;
   isLeadContact?: boolean;
   sortOrder?: number;
@@ -399,6 +406,65 @@ export function setContactVisibility(
 
 export function deleteContact(token: string | null, id: string): Promise<ApiResult<{ id: string }>> {
   return authorizedRequest<{ id: string }>(`/cms/contacts/${id}`, token, { method: 'DELETE' });
+}
+
+/**
+ * 上传 / 替换员工头像（multipart/form-data，字段名 file）。
+ *
+ * 独立于 authorizedRequest：绝不能预设 Content-Type（会破坏 multipart boundary），
+ * Headers 必须交由 fetch 依据 FormData 自动生成。与 lib/media.ts 的
+ * uploadMediaAsset 同一套约定。
+ *
+ * 后端语义：先传新对象 → 落库 → 删旧对象（存储不留孤儿文件）。
+ */
+export async function uploadContactAvatar(
+  id: string,
+  token: string | null,
+  formData: FormData,
+): Promise<ApiResult<Contact>> {
+  const API_BASE = (
+    process.env.ADMIN_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    'http://127.0.0.1:4000/api/v1'
+  ).replace(/\/$/, '');
+
+  try {
+    const response = await fetch(`${API_BASE}/cms/contacts/${id}/avatar`, {
+      method: 'PUT',
+      body: formData,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    const json = (await response.json().catch(() => null)) as {
+      success: boolean;
+      data?: Contact;
+      error?: { message?: string | string[] };
+    } | null;
+
+    if (!response.ok || !json || json.success !== true || !json.data) {
+      const message = json?.error?.message;
+      return {
+        ok: false,
+        error: Array.isArray(message)
+          ? message.join('；')
+          : (message ?? `头像上传失败（HTTP ${response.status}）`),
+        status: response.status,
+      };
+    }
+    return { ok: true, data: json.data };
+  } catch (error) {
+    return { ok: false, error: `无法连接后端接口：${(error as Error).message}`, status: 0 };
+  }
+}
+
+/** 移除员工头像（后端同时删除存储对象，不留孤儿文件） */
+export function removeContactAvatar(
+  token: string | null,
+  id: string,
+): Promise<ApiResult<Contact>> {
+  return authorizedRequest<Contact>(`/cms/contacts/${id}/avatar`, token, { method: 'DELETE' });
 }
 
 /* ------------------------ 站点内容 / 导航（Phase 4.7） ------------------------ */

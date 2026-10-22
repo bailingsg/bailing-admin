@@ -97,6 +97,7 @@ export default async function ContactsPage() {
                     <th className="px-4 py-3 font-medium">员工账号</th>
                     <th className="px-4 py-3 font-medium">展示邮箱</th>
                     <th className="px-4 py-3 font-medium">WhatsApp</th>
+                    <th className="px-4 py-3 font-medium">手机号</th>
                     <th className="px-4 py-3 font-medium">公开展示</th>
                     <th className="px-4 py-3 font-medium">询盘联系人</th>
                     <th className="px-4 py-3 font-medium">排序</th>
@@ -107,12 +108,31 @@ export default async function ContactsPage() {
                   {result.data.items.map((contact) => (
                     <tr key={contact.id} className="border-t border-border hover:bg-table-row-hover">
                       <td className="px-4 py-3">
-                        <span className="text-small font-medium text-foreground">
-                          {contact.displayName}
-                        </span>
-                        {contact.jobTitle ? (
-                          <div className="text-caption text-text-muted">{contact.jobTitle}</div>
-                        ) : null}
+                        <div className="flex items-center gap-3">
+                          {contact.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- 后台管理界面，动态图床 URL 无需 next/image 优化
+                            <img
+                              src={contact.avatarUrl}
+                              alt=""
+                              className="size-9 shrink-0 rounded-md border border-border object-cover"
+                            />
+                          ) : (
+                            <div
+                              aria-hidden="true"
+                              className="flex size-9 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-surface text-caption text-text-muted"
+                            >
+                              {contact.displayName.trim().slice(0, 1) || '?'}
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-small font-medium text-foreground">
+                              {contact.displayName}
+                            </span>
+                            {contact.jobTitle ? (
+                              <div className="text-caption text-text-muted">{contact.jobTitle}</div>
+                            ) : null}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-small text-text-secondary">
@@ -132,6 +152,9 @@ export default async function ContactsPage() {
                       </td>
                       <td className="px-4 py-3 text-small text-text-secondary">
                         {contact.whatsapp ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 text-small text-text-secondary">
+                        {contact.phone ?? '—'}
                       </td>
                       <td className="px-4 py-3">
                         {contact.showOnSite ? (
