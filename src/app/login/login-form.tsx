@@ -30,6 +30,22 @@ export function LoginForm() {
     event.preventDefault();
     if (loading) return;
 
+    // 以表单 DOM 实际值为准，而不是受控 state：
+    // 浏览器密码管理器 / 自动填充（Chrome、Safari、1Password 等）写入 input
+    // 时不一定会派发 React 能捕获的 input 事件，state 可能仍是空串，
+    // 结果把空邮箱提交给后端 → ValidationPipe 400。FormData 直接读 DOM，
+    // 不受此影响。读取后同步回 state，保证后续渲染与提交一致。
+    const formData = new FormData(event.currentTarget);
+    const emailValue = String(formData.get('email') ?? '').trim();
+    const passwordValue = String(formData.get('password') ?? '');
+    if (emailValue !== email) setEmail(emailValue);
+    if (passwordValue !== password) setPassword(passwordValue);
+
+    if (!emailValue || !passwordValue) {
+      setError('请输入邮箱与口令');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -37,7 +53,7 @@ export function LoginForm() {
       const response = await fetch(withBasePath('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: emailValue, password: passwordValue }),
       });
 
       if (response.ok) {
@@ -49,7 +65,7 @@ export function LoginForm() {
       }
 
       const json = (await response.json().catch(() => null)) as { error?: string } | null;
-      setError(translateLoginError(json?.error));
+      setError(translateLoginError(json?.error, response.status));
     } catch {
       setError('无法连接登录服务，请稍后重试');
     } finally {
@@ -117,11 +133,15 @@ export function LoginForm() {
 /**
  * 登录错误文案中文化（后台统一中文）。
  *
- * 只映射后端既有语义，不改变判定逻辑：
- *   · 401 Invalid email or password → 邮箱或口令错误
- *   · 其余（如后端服务异常 / 校验失败）原样透出，便于排查
+ * 按 HTTP 状态码给语义，不把「输入不合法」误报成「服务异常」：
+ *   · 400 → 邮箱或口令格式不正确（后端 ValidationPipe 校验失败）
+ *   · 401 → 邮箱或口令错误（后端统一文案，不区分账号不存在与口令错误）
+ *   · 5xx → 服务端异常，提示稍后重试
  */
-function translateLoginError(raw: string | undefined): string {
+function translateLoginError(raw: string | undefined, status: number): string {
+  if (status === 400) return '邮箱或口令格式不正确，请检查后重试';
+  if (status === 401) return '邮箱或口令错误';
+  if (status >= 500) return '后端登录服务异常，请稍后重试';
   if (!raw) return '邮箱或口令错误';
   if (/invalid email or password/i.test(raw)) return '邮箱或口令错误';
   return raw;

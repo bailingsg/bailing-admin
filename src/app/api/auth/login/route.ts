@@ -39,7 +39,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   if (typeof body.email !== 'string' || typeof body.password !== 'string') {
-    return NextResponse.json({ ok: false, error: 'Invalid email or password' }, { status: 400 });
+    return NextResponse.json({ ok: false, error: '请输入邮箱与口令' }, { status: 400 });
+  }
+
+  // 空串在类型上合法，但必然被后端 ValidationPipe 拒掉（email must be an email）。
+  // 这里前置拦截，避免把「用户没填」包装成「后端服务异常」误导排查。
+  const email = body.email.trim();
+  const password = body.password;
+  if (!email || !password) {
+    return NextResponse.json({ ok: false, error: '请输入邮箱与口令' }, { status: 400 });
   }
 
   let accessToken: string;
@@ -47,7 +55,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const upstream = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: body.email, password: body.password }),
+      body: JSON.stringify({ email, password }),
       cache: 'no-store',
       signal: AbortSignal.timeout(8000),
     });
@@ -61,6 +69,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } else if (upstream.status === 401) {
       // 与后端一致的统一文案：不区分「邮箱不存在」与「口令错误」
       return NextResponse.json({ ok: false, error: 'Invalid email or password' }, { status: 401 });
+    } else if (upstream.status === 400) {
+      // 后端参数校验失败（邮箱格式不合法等）——属输入问题，必须回 400，
+      // 不能报成 502 服务异常（会让人误以为后端挂了）
+      return NextResponse.json({ ok: false, error: '邮箱或口令格式不正确' }, { status: 400 });
     } else {
       return NextResponse.json(
         { ok: false, error: `后端登录服务异常（HTTP ${upstream.status}）` },
