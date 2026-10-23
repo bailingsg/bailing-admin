@@ -36,6 +36,8 @@ export function AccountForm({
   const [name, setName] = React.useState(account?.name ?? '');
   const [email, setEmail] = React.useState(account?.email ?? '');
   const [jobTitle, setJobTitle] = React.useState(account?.jobTitle ?? '');
+  const [okkiAccount, setOkkiAccount] = React.useState(account?.okkiAccount ?? '');
+  const [alibabaAccount, setAlibabaAccount] = React.useState(account?.alibabaAccount ?? '');
   const [roleIds, setRoleIds] = React.useState<string[]>(
     account?.roles.map((role) => role.id) ?? [],
   );
@@ -93,6 +95,8 @@ export function AccountForm({
           name: trimmedName,
           email: trimmedEmail,
           jobTitle: jobTitle.trim() || undefined,
+          okkiAccount: okkiAccount.trim() || undefined,
+          alibabaAccount: alibabaAccount.trim() || undefined,
           roleIds,
           initialPassword: password || undefined,
           isActive,
@@ -110,6 +114,8 @@ export function AccountForm({
         name: trimmedName,
         email: trimmedEmail,
         jobTitle: jobTitle.trim() || null,
+        okkiAccount: okkiAccount.trim() || null,
+        alibabaAccount: alibabaAccount.trim() || null,
         roleIds,
       });
       if (!result.ok) {
@@ -154,6 +160,24 @@ export function AccountForm({
             maxLength={80}
             onChange={(event) => setJobTitle(event.target.value)}
             placeholder="职位名称"
+          />
+        </FormField>
+        <FormField label="小满账号" htmlFor="account-okki" hint="选填，该员工的小满（OKKI）CRM 账号">
+          <Input
+            id="account-okki"
+            value={okkiAccount}
+            maxLength={80}
+            onChange={(event) => setOkkiAccount(event.target.value)}
+            placeholder="小满（OKKI）登录账号"
+          />
+        </FormField>
+        <FormField label="阿里账号" htmlFor="account-alibaba" hint="选填，该员工的阿里巴巴账号">
+          <Input
+            id="account-alibaba"
+            value={alibabaAccount}
+            maxLength={80}
+            onChange={(event) => setAlibabaAccount(event.target.value)}
+            placeholder="阿里巴巴登录账号"
           />
         </FormField>
         {mode === 'create' ? (

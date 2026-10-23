@@ -23,6 +23,10 @@ export interface AccountListItem {
   name: string | null;
   email: string;
   jobTitle: string | null;
+  /** 小满（OKKI）CRM 账号——内部备注用，非必填 */
+  okkiAccount: string | null;
+  /** 阿里巴巴账号——内部备注用，非必填 */
+  alibabaAccount: string | null;
   role: AdminRole;
   roles: AccountRoleRef[];
   isActive: boolean;
@@ -78,6 +82,10 @@ export interface CreateAccountInput {
   name: string;
   email: string;
   jobTitle?: string;
+  /** 小满（OKKI）CRM 账号——内部备注用，非必填 */
+  okkiAccount?: string;
+  /** 阿里巴巴账号——内部备注用，非必填 */
+  alibabaAccount?: string;
   roleIds: string[];
   initialPassword?: string;
   isActive?: boolean;
@@ -87,6 +95,10 @@ export interface UpdateAccountInput {
   name?: string;
   email?: string;
   jobTitle?: string | null;
+  /** 小满（OKKI）CRM 账号——内部备注用，非必填；传 null 清空 */
+  okkiAccount?: string | null;
+  /** 阿里巴巴账号——内部备注用，非必填；传 null 清空 */
+  alibabaAccount?: string | null;
   roleIds?: string[];
 }
 

@@ -45,7 +45,7 @@ export async function createAccountAction(
   return result;
 }
 
-/** 更新账号（邮箱 / 姓名 / 职位 / 角色） */
+/** 更新账号（邮箱 / 姓名 / 职位 / 小满·阿里账号 / 角色） */
 export async function updateAccountAction(
   id: string,
   input: UpdateAccountInput,

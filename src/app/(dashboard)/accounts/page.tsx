@@ -14,12 +14,13 @@ import {
 } from '@/lib/rbac';
 import { AccountStatusButton } from './account-status-button';
 import { ResetPasswordButton } from './reset-password-button';
+import { withBasePath } from '@/lib/base-path';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: '账号管理',
-  description: '管理后台员工账号：姓名、登录邮箱、职位、角色与账号状态。',
+  description: '管理后台员工账号：姓名、登录邮箱、职位、小满/阿里账号、角色与账号状态。',
 };
 
 const PAGE_SIZE = 20;
@@ -100,7 +101,7 @@ export default async function AccountsPage({
       />
 
       {/* 搜索 + 筛选 */}
-      <form className="mt-6 flex flex-wrap items-end gap-3" action="/accounts" method="get">
+      <form className="mt-6 flex flex-wrap items-end gap-3" action={withBasePath('/accounts')} method="get">
         <div className="flex min-w-56 flex-1 flex-col gap-1.5">
           <label htmlFor="keyword" className="text-small font-medium text-foreground">
             搜索
@@ -203,6 +204,8 @@ export default async function AccountsPage({
                 <tr className="text-caption text-text-secondary">
                   <th className="px-4 py-3 font-medium">员工</th>
                   <th className="px-4 py-3 font-medium">职位</th>
+                  <th className="px-4 py-3 font-medium">小满账号</th>
+                  <th className="px-4 py-3 font-medium">阿里账号</th>
                   <th className="px-4 py-3 font-medium">角色</th>
                   <th className="px-4 py-3 font-medium">状态</th>
                   <th className="px-4 py-3 font-medium">最近登录</th>
@@ -252,6 +255,11 @@ export default async function AccountsPage({
                         ))
                       )}
                     </div>
+                    {item.okkiAccount || item.alibabaAccount ? (
+                      <div className="text-caption text-text-muted">
+                        小满：{item.okkiAccount ?? '—'}　阿里：{item.alibabaAccount ?? '—'}
+                      </div>
+                    ) : null}
                     <div className="flex flex-wrap items-center gap-2">
                       {canUpdate ? (
                         <Button asChild variant="outline" size="sm">
@@ -322,6 +330,8 @@ function AccountRow({
         <div className="text-caption text-text-muted">{account.email}</div>
       </td>
       <td className="px-4 py-3 text-small text-text-secondary">{account.jobTitle ?? '—'}</td>
+      <td className="px-4 py-3 text-small text-text-secondary">{account.okkiAccount ?? '—'}</td>
+      <td className="px-4 py-3 text-small text-text-secondary">{account.alibabaAccount ?? '—'}</td>
       <td className="px-4 py-3">
         <div className="flex flex-wrap gap-1.5">
           {account.roles.length === 0 ? (
