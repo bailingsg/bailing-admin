@@ -19,6 +19,20 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 const nextConfig: NextConfig = {
   distDir,
   ...(basePath ? { basePath } : {}),
+  /**
+   * Server Actions 请求体上限。
+   *
+   * 媒体库上传经服务端 Action 透传 multipart，Next 默认 1MB：
+   * 超过即抛 "Body exceeded 1 MB limit" → 整页 Application error
+   * （digest 1246829881，2026-10-23 线上复现）。
+   * 后台媒体上限为 10MB（MEDIA_MAX_SIZE_MB），取 12mb 留 multipart 余量；
+   * nginx 侧 client_max_body_size 已是 20m，不构成瓶颈。
+   */
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '12mb',
+    },
+  },
 };
 
 export default nextConfig;
