@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/format';
+import { friendlyQueryError } from '@/lib/api';
 import { getSessionToken } from '@/lib/session';
 import {
   listCategories,
@@ -94,10 +95,14 @@ export default async function ProductsPage({
             id="keyword"
             name="keyword"
             type="search"
+            maxLength={120}
             defaultValue={keyword ?? ''}
             placeholder="产品名称 / 描述关键词"
             className="h-10 w-full rounded-md border border-border bg-background px-3 text-body text-foreground outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40"
           />
+          {/* 与后端 ListProductsQueryDto.keyword 的 MaxLength(120) 对齐：
+              粘贴超长文本时直接截断，避免整页被 400 错误卡片顶替 */}
+          <p className="text-caption text-text-muted">最多 120 个字符</p>
         </div>
         <div className="flex w-48 flex-col gap-1.5">
           <label htmlFor="categoryId" className="text-small font-medium text-foreground">
@@ -143,10 +148,17 @@ export default async function ProductsPage({
         <Card className="mt-6">
           <CardContent className="flex flex-col gap-3 py-8">
             <p className="text-body font-medium text-foreground">无法加载产品列表</p>
-            <p className="text-small text-text-secondary">{productsResult.error}</p>
+            <p className="text-small text-text-secondary">{friendlyQueryError(productsResult.error)}</p>
             <p className="text-caption text-text-muted">
               请确认后端服务已启动（默认 4000 端口）且数据库可用。
             </p>
+            {/* 兜底出口：筛选条件导致请求失败时，一键清除筛选回到完整列表，
+                避免用户被错误卡片卡住、只能手动改 URL */}
+            <div>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/products">清除筛选条件</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : productsResult.data.items.length === 0 ? (

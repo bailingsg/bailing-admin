@@ -86,6 +86,20 @@ function extractErrorMessage(json: unknown, status: number): string {
 }
 
 /**
+ * 列表查询参数校验类错误的友好提示（class-validator 英文 → 中文业务解释）。
+ *
+ * 典型场景：搜索框粘贴了超长文本（如整段产品描述），超出后端 keyword 的
+ * MaxLength(120) 限制被 400 拒绝。输入框已有 maxLength 防呆，但通过
+ * 手动改 URL / 历史记录仍可能带入超长 keyword，此处兜底翻译。
+ */
+export function friendlyQueryError(message: string): string {
+  if (message.includes('keyword must be shorter than or equal to')) {
+    return '搜索关键词过长（最多 120 个字符），请缩短后重试';
+  }
+  return message;
+}
+
+/**
  * 带 JWT 的请求。token 为 null 时等价于匿名请求（将得到后端 401）。
  * 超时与错误处理与 lib/rfq.ts 对齐，保证后台体验一致。
  */
