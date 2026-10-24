@@ -75,6 +75,11 @@ export interface MediaAsset {
   category: MediaCategory;
   /** 业务用途分类（Phase 5.6；null = 未分类） */
   usage: MediaUsage | null;
+  /**
+   * 引用计数：被业务记录（产品图 / 博客封面 / 工厂 / 质量 / 应用 / 站点分区）
+   * 引用的次数。0 = 未被引用（可安全删除），与删除保护规则同源。
+   */
+  referenceCount: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -94,6 +99,8 @@ export interface ListMediaParams {
   keyword?: string;
   category?: MediaCategory;
   usage?: MediaUsage;
+  /** 引用状态筛选：true = 仅被引用；false = 仅未被引用（清理视图） */
+  referenced?: boolean;
 }
 
 /** 上传大小提示上限（与后端 MAX_MEDIA_FILE_SIZE 保持一致，仅用于界面文案） */
@@ -101,7 +108,7 @@ export const MEDIA_MAX_SIZE_MB = 10;
 
 /* ------------------------------- 查询 ------------------------------- */
 
-/** 媒体列表（分页 + keyword/category 筛选） */
+/** 媒体列表（分页 + keyword/category/usage/referenced 筛选） */
 export function listMedia(
   token: string | null,
   params: ListMediaParams = {},
@@ -112,6 +119,7 @@ export function listMedia(
   if (params.keyword) search.set('keyword', params.keyword);
   if (params.category) search.set('category', params.category);
   if (params.usage) search.set('usage', params.usage);
+  if (params.referenced !== undefined) search.set('referenced', String(params.referenced));
   const query = search.toString();
   return authorizedRequest<PaginatedMedia>(`/cms/media${query ? `?${query}` : ''}`, token);
 }

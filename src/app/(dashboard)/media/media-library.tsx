@@ -31,6 +31,9 @@ import {
  *
  * Phase 5.6：新增「用途分类」（文章 / 产品 / 证书 / 工厂 / 生产 / 装车 …），
  * 上传时选择、卡片上可随时改，用于媒体库筛选与业务选择器收敛。
+ *
+ * 引用状态：后端返回 referenceCount（与删除保护同源规则），0 = 未被引用，
+ * 卡片打「未被引用」标签；配合页面「未被引用」筛选清理僵尸图片。
  */
 
 const UPLOAD_INITIAL_STATE: MediaFormState = { ok: false };
@@ -297,6 +300,15 @@ function MediaCard({ asset }: { asset: MediaAsset }) {
           >
             {mediaUsageLabel(asset.usage)}
           </span>
+          {/* 引用状态：0 = 未被任何业务记录引用（可安全删除） */}
+          {asset.referenceCount === 0 ? (
+            <span
+              className="rounded-full bg-warning-50 px-2 py-0.5 font-medium text-warning-600"
+              title="未被任何业务记录引用，可安全删除"
+            >
+              未被引用
+            </span>
+          ) : null}
           <span>{formatFileSize(asset.size)}</span>
           {asset.width && asset.height ? (
             <span>
@@ -411,6 +423,14 @@ function PreviewModal({ asset, onClose }: { asset: MediaAsset; onClose: () => vo
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 px-4 py-3 text-small sm:grid-cols-4">
           <Meta label="类型" value={mediaTypeLabel(asset.mimeType)} />
           <Meta label="用途" value={mediaUsageLabel(asset.usage)} />
+          <Meta
+            label="引用"
+            value={
+              asset.referenceCount > 0
+                ? `被 ${asset.referenceCount} 处业务记录引用`
+                : '未被引用'
+            }
+          />
           <Meta label="大小" value={formatFileSize(asset.size)} />
           <Meta
             label="尺寸"
