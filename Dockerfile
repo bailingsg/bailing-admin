@@ -19,8 +19,13 @@ ARG NEXT_PUBLIC_API_BASE_URL="http://43.159.152.116/api/v1"
 # 部署 basePath（生产 /admin；本地留空）。客户端原生 fetch 需据此拼前缀，
 # 见 src/lib/base-path.ts。
 ARG NEXT_PUBLIC_BASE_PATH=""
+# 前台站点绝对地址（「查看线上页面」跳转用）。后台与前台不同源，
+# 必须绝对 URL；NEXT_PUBLIC_ 前缀会在构建期内联，故必须作为 build-arg 传入，
+# 仅运行时注入无效（见 src/lib/frontend-url.ts）。
+ARG NEXT_PUBLIC_FRONTEND_URL="https://bailingwooden.com"
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
     NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH \
+    NEXT_PUBLIC_FRONTEND_URL=$NEXT_PUBLIC_FRONTEND_URL \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
