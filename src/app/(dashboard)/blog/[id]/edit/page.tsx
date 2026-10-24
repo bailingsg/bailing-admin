@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/format';
 import { getSessionToken } from '@/lib/session';
+import { frontendUrl } from '@/lib/frontend-url';
 import { getBlogPost, listBlogCategories, listBlogTags } from '@/lib/blog';
 import { listProducts } from '@/lib/products';
 import { getCurrentAdmin, hasPermission, type AdminProfile } from '@/lib/api';
@@ -125,7 +126,7 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
             revalidatePaths={['/blog', `/blog/${post.id}/edit`]}
             canPublish={canPublish}
             canUnpublish={canUnpublish}
-            publicHref={`/blog/${post.slug}`}
+            publicHref={frontendUrl(`/blog/${post.slug}`)}
             previewHref={`/preview/blog/posts/${post.id}`}
           />
 

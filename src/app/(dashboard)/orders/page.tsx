@@ -13,6 +13,7 @@ import {
   type OrderItem,
 } from '@/lib/orders';
 import { OrderForm } from './order-form';
+import { withBasePath } from '@/lib/base-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,7 +96,7 @@ export default async function OrdersListPage({
 
       {/* 筛选区 */}
       <form
-        action="/orders"
+        action={withBasePath('/orders')}
         method="get"
         className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-4"
       >

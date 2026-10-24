@@ -4,6 +4,7 @@ import { Container } from '@/components/layout/container';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { getSessionToken } from '@/lib/session';
+import { frontendUrl } from '@/lib/frontend-url';
 import { getFactorySection } from '@/lib/enterprise';
 import { getCurrentAdmin, hasPermission, type AdminProfile } from '@/lib/api';
 import { getContentPreview, type ContentPreview } from '@/lib/publishing';
@@ -84,7 +85,7 @@ export default async function EditFactoryPage({ params }: { params: Promise<{ id
             revalidatePaths={['/factory', `/factory/${section.id}/edit`]}
             canPublish={canPublish}
             canUnpublish={canUnpublish}
-            publicHref="/factory"
+            publicHref={frontendUrl('/factory')}
             previewHref={`/preview/factory/${section.id}`}
           />
         </div>

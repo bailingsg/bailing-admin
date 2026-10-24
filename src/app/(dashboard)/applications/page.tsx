@@ -12,6 +12,7 @@ import {
   type ContentStatus,
 } from '@/lib/enterprise';
 import { DeleteApplicationButton } from './delete-application-button';
+import { withBasePath } from '@/lib/base-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,7 +100,7 @@ export default async function ApplicationsPage({
       />
 
       {/* 搜索 + 推荐筛选 */}
-      <form className="mt-6 flex flex-wrap items-end gap-3" action="/applications" method="get">
+      <form className="mt-6 flex flex-wrap items-end gap-3" action={withBasePath('/applications')} method="get">
         <div className="flex min-w-56 flex-1 flex-col gap-1.5">
           <label htmlFor="keyword" className="text-small font-medium text-foreground">
             搜索

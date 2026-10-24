@@ -13,6 +13,7 @@ import {
   type LeadAssignmentSource,
   type LeadDistributionState,
 } from '@/lib/lead-distribution';
+import { withBasePath } from '@/lib/base-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +75,7 @@ export default async function LeadDistributionHistoryPage({
       />
 
       {/* 筛选 */}
-      <form className="mt-6 flex flex-wrap items-end gap-3" action="/lead-distribution/history" method="get">
+      <form className="mt-6 flex flex-wrap items-end gap-3" action={withBasePath('/lead-distribution/history')} method="get">
         <div className="flex w-56 flex-col gap-1.5">
           <label htmlFor="source" className="text-small font-medium text-foreground">
             分配来源

@@ -15,6 +15,7 @@ import {
   type ProductStatus,
 } from '@/lib/products';
 import { DeleteProductButton } from './delete-product-button';
+import { withBasePath } from '@/lib/base-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,7 +87,7 @@ export default async function ProductsPage({
       />
 
       {/* 搜索 + 分类筛选（GET 表单，服务端渲染） */}
-      <form className="mt-6 flex flex-wrap items-end gap-3" action="/products" method="get">
+      <form className="mt-6 flex flex-wrap items-end gap-3" action={withBasePath('/products')} method="get">
         <div className="flex min-w-56 flex-1 flex-col gap-1.5">
           <label htmlFor="keyword" className="text-small font-medium text-foreground">
             搜索

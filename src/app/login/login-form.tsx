@@ -86,7 +86,6 @@ export function LoginForm() {
           autoComplete="username"
           autoFocus
           required
-          placeholder="admin@bailingwooden.com"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           disabled={loading}
@@ -103,7 +102,6 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          placeholder="••••••••"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           disabled={loading}

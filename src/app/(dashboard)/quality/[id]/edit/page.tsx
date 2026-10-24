@@ -4,6 +4,7 @@ import { Container } from '@/components/layout/container';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { getSessionToken } from '@/lib/session';
+import { frontendUrl } from '@/lib/frontend-url';
 import { getQualityRecord } from '@/lib/enterprise';
 import { getCurrentAdmin, hasPermission, type AdminProfile } from '@/lib/api';
 import { getContentPreview, type ContentPreview } from '@/lib/publishing';
@@ -83,7 +84,7 @@ export default async function EditQualityPage({ params }: { params: Promise<{ id
             revalidatePaths={['/quality', `/quality/${record.id}/edit`]}
             canPublish={canPublish}
             canUnpublish={canUnpublish}
-            publicHref="/quality"
+            publicHref={frontendUrl('/quality')}
             previewHref={`/preview/quality/${record.id}`}
           />
         </div>

@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { fetchMediaForSection } from './actions';
+import { withBasePath } from '@/lib/base-path';
 
 /**
  * 站点分区配图选择弹窗（只读媒体库，不自行上传）。
@@ -66,7 +67,7 @@ export function SectionMediaPicker({
       <div className="flex flex-col gap-4">
         <form
           className="flex items-end gap-2"
-          action="/site-content"
+          action={withBasePath('/site-content')}
           method="get"
           onSubmit={(event) => {
             event.preventDefault();

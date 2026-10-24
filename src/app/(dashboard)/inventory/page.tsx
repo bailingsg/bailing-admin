@@ -9,6 +9,7 @@ import { getCurrentAdmin } from '@/lib/api';
 import { formatQuantity, listInventory } from '@/lib/inventory';
 import { InventoryForm } from './inventory-form';
 import { InventoryRowActions } from './inventory-row-actions';
+import { withBasePath } from '@/lib/base-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,7 @@ export default async function InventoryListPage({
 
       {/* 筛选区 */}
       <form
-        action="/inventory"
+        action={withBasePath('/inventory')}
         method="get"
         className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-4"
       >

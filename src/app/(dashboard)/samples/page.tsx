@@ -14,6 +14,7 @@ import {
   type SampleItem,
   type SampleStatus,
 } from '@/lib/samples';
+import { withBasePath } from '@/lib/base-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,7 +110,7 @@ export default async function SamplesListPage({
 
       {/* 筛选区 */}
       <form
-        action="/samples"
+        action={withBasePath('/samples')}
         method="get"
         className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-4"
       >

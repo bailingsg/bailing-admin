@@ -4,6 +4,7 @@ import { Container } from '@/components/layout/container';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { getSessionToken } from '@/lib/session';
+import { frontendUrl } from '@/lib/frontend-url';
 import { getApplication } from '@/lib/enterprise';
 import { getCurrentAdmin, hasPermission, type AdminProfile } from '@/lib/api';
 import { getContentPreview, type ContentPreview } from '@/lib/publishing';
@@ -87,7 +88,7 @@ export default async function EditApplicationPage({ params }: { params: Promise<
             revalidatePaths={['/applications', `/applications/${application.id}/edit`]}
             canPublish={canPublish}
             canUnpublish={canUnpublish}
-            publicHref={`/applications/${application.slug}`}
+            publicHref={frontendUrl(`/applications/${application.slug}`)}
             previewHref={`/preview/applications/${application.id}`}
           />
         </div>

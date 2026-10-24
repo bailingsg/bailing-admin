@@ -17,6 +17,7 @@ import {
 import { SectionFormModal } from './section-form-modal';
 import { SectionPublishActions } from './section-publish-actions';
 import { DeleteSectionButton } from './delete-section-button';
+import { withBasePath } from '@/lib/base-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,7 +99,7 @@ export default async function SiteContentPage({
       />
 
       {/* 搜索 + 页面筛选 */}
-      <form className="mt-6 flex flex-wrap items-end gap-3" action="/site-content" method="get">
+      <form className="mt-6 flex flex-wrap items-end gap-3" action={withBasePath('/site-content')} method="get">
         <div className="flex min-w-56 flex-1 flex-col gap-1.5">
           <label htmlFor="keyword" className="text-small font-medium text-foreground">
             搜索
