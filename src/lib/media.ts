@@ -24,6 +24,8 @@ export type MediaUsage =
   | 'PRODUCTION'
   | 'LOADING'
   | 'EXHIBITION'
+  | 'INSPECTION'
+  | 'PACKAGING'
   | 'APPLICATION'
   | 'SITE'
   | 'OTHER';
@@ -32,11 +34,13 @@ export type MediaUsage =
 export const MEDIA_USAGES: { value: MediaUsage; label: string; hint: string }[] = [
   { value: 'BLOG', label: '文章', hint: '文章封面 / 正文配图' },
   { value: 'PRODUCT', label: '产品', hint: '产品详情图库' },
-  { value: 'CERTIFICATE', label: '证书', hint: '认证证书 / 检测报告' },
-  { value: 'FACTORY', label: '工厂', hint: '厂房 / 厂区设施' },
-  { value: 'PRODUCTION', label: '生产', hint: '生产流程 / 生产设备' },
-  { value: 'LOADING', label: '装车', hint: '装柜 / 装车现场' },
-  { value: 'EXHIBITION', label: '展会', hint: '展会与客户来访照片' },
+  { value: 'CERTIFICATE', label: '证书', hint: '认证证书 / 检测报告（质量页「认证与报告」）' },
+  { value: 'FACTORY', label: '工厂', hint: '厂房 / 厂区设施（工厂页「工厂与车间」）' },
+  { value: 'PRODUCTION', label: '生产', hint: '生产设备 / 车间工序（工厂页「生产设备」）' },
+  { value: 'LOADING', label: '装车', hint: '装柜 / 装车现场（工厂页「装柜发货」）' },
+  { value: 'EXHIBITION', label: '展会', hint: '展会与客户来访照片（工厂页「参展记录」）' },
+  { value: 'INSPECTION', label: '检验', hint: '检验过程照片（质量页「检验流程」）' },
+  { value: 'PACKAGING', label: '包装', hint: '包装品质照片（质量页「包装品质」）' },
   { value: 'APPLICATION', label: '应用场景', hint: '应用场景页封面' },
   { value: 'SITE', label: '站点配图', hint: '首页等结构化分区配图' },
   { value: 'OTHER', label: '其他', hint: '暂未归类' },
