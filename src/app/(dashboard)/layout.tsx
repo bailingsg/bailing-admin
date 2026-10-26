@@ -7,7 +7,7 @@ import { HeaderUser } from '@/components/header-user';
 import { ToastHost } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { getCurrentAdmin, hasPermission } from '@/lib/api';
+import { getCurrentAdmin, hasPermission, roleDisplayName } from '@/lib/api';
 import { getSessionToken } from '@/lib/session';
 import { PATHNAME_HEADER, requiredPermissionsFor } from '@/lib/route-permissions';
 
@@ -80,7 +80,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           </p>
           <HeaderUser
             email={admin.email}
-            role={admin.role}
+            roleName={roleDisplayName(admin)}
             name={admin.name}
             avatarUrl={admin.avatarUrl}
           />

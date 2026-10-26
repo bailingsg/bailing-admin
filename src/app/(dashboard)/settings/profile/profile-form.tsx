@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { showToast } from '@/components/ui/toast';
 import type { AdminProfile, MyContact } from '@/lib/api';
+import { roleDisplayName } from '@/lib/api';
 import { updateMyProfileAction } from './actions';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -172,7 +173,7 @@ export function ProfileForm({
           <div className="flex flex-col gap-1.5">
             <span className="text-small font-medium text-foreground">角色（只读）</span>
             <p className="h-10 px-3 py-2.5 text-small text-text-secondary">
-              {profile.roles.length > 0 ? profile.roles.join(' / ') : (profile.role === 'ADMIN' ? '超级管理员' : '内容编辑')}
+              {roleDisplayName(profile) || '未分配角色'}
             </p>
           </div>
         </CardContent>

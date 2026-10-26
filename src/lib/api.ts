@@ -20,6 +20,14 @@ export interface AdminProfile {
   role: AdminRole;
   /** 生效中的角色 key（如 SUPER_ADMIN / CONTENT_EDITOR / SALES） */
   roles: string[];
+  /**
+   * 生效角色的中文名（与 roles 同序同长，如 ['销售']）。
+   *
+   * 展示统一用这个，不要用 roles 的 key（SALES 是内部标识，不是给人看的），
+   * 也不要在前端硬编码 key→名 映射表——角色名可被管理员改写，自建角色更是
+   * 没有内置条目，映射表必然漂移。
+   */
+  roleNames: string[];
   /** 生效权限 key 全集（导航与按钮级控制唯一依据） */
   permissions: string[];
   isSuperAdmin: boolean;
@@ -46,6 +54,26 @@ export function hasAnyPermission(
   permissions: string[],
 ): boolean {
   return permissions.some((p) => hasPermission(profile, p));
+}
+
+/**
+ * 当前账号的角色显示名（中文，多个用「 / 」连接）。
+ *
+ * 唯一事实源 = 后端下发的 `roleNames`（与 roles 同序），回退到 key。
+ *
+ * 为什么不能拿 `roles` 的 key 当文案：`SALES` 是内部标识，给人看必须是
+ * 「销售」；也不能用旧的 `role` 枚举（ADMIN/EDITOR）反推——那是 Phase 4.6
+ * 之前的遗留字段，绝大多数账号都是 EDITOR，反推出来的「内容编辑」和
+ * 真实角色（销售 / 超级管理员）根本对不上。
+ */
+export function roleDisplayName(
+  profile: Pick<AdminProfile, 'roles' | 'roleNames'> | null | undefined,
+): string {
+  if (!profile) return '';
+  const names = profile.roleNames ?? [];
+  if (names.length > 0) return names.join(' / ');
+  // 老后端（未下发 roleNames）时的兜底：至少别显示空白
+  return (profile.roles ?? []).join(' / ');
 }
 
 /** Dashboard 统计（GET /cms/stats，全部为后端真实计数） */

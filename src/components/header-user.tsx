@@ -18,12 +18,13 @@ import { withBasePath } from '@/lib/base-path';
  */
 export function HeaderUser({
   email,
-  role,
+  roleName,
   name,
   avatarUrl,
 }: {
   email: string;
-  role: 'ADMIN' | 'EDITOR';
+  /** 当前账号的角色显示名（中文，如「销售」）；为空时显示占位符 */
+  roleName?: string | null;
   name?: string | null;
   /** 我的头像（未上传时显示姓名首字母占位） */
   avatarUrl?: string | null;
@@ -99,9 +100,7 @@ export function HeaderUser({
         )}
         <span className="hidden flex-col sm:flex">
           <span className="text-small font-medium text-foreground">{email}</span>
-          <span className="text-caption text-text-muted">
-            {role === 'ADMIN' ? '超级管理员' : '内容编辑'}
-          </span>
+          <span className="text-caption text-text-muted">{roleName || '未分配角色'}</span>
         </span>
         {/* 窄屏只显示图标区，避免顶栏被长邮箱撑破 */}
         <span className="flex flex-col sm:hidden">
