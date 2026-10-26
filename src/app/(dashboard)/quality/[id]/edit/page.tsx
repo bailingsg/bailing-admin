@@ -8,6 +8,7 @@ import { frontendUrl } from '@/lib/frontend-url';
 import { getQualityRecord } from '@/lib/enterprise';
 import { getCurrentAdmin, hasPermission, type AdminProfile } from '@/lib/api';
 import { getContentPreview, type ContentPreview } from '@/lib/publishing';
+import { mergeQualityRecordDraft } from '@/lib/draft-merge';
 import { QualityRecordForm } from '../../quality-form';
 import { PublishControls } from '../../../publish-controls';
 import { DeleteQualityButton } from '../../delete-quality-button';
@@ -49,10 +50,12 @@ export default async function EditQualityPage({ params }: { params: Promise<{ id
     );
   }
 
-  const record = result.data;
   const preview = previewResult.ok
     ? (previewResult.data as ContentPreview<{ slug: string }>)
     : null;
+  // 已发布记录的「保存」只写编辑稿 → 表单用「线上版本 + 最新编辑稿」初始化，
+  // 否则重新打开看不到未发布修改，一次普通保存就把草稿覆盖回线上旧值。
+  const record = await mergeQualityRecordDraft(result.data, preview?.draft ?? null, token);
   const canPublish = hasPermission(admin.ok ? admin.data : null, 'quality.publish');
   const canUnpublish = hasPermission(admin.ok ? admin.data : null, 'quality.unpublish');
 

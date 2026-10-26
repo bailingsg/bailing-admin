@@ -14,6 +14,90 @@ export const metadata = {
 };
 
 /**
+ * 单页取多少条：**必须 ≤ 后端 ListMediaQueryDto 的 @Max(100)**。
+ *
+ * 历史缺陷：这里曾硬编码 `limit: 200`，被后端 400 拒绝（limit must not be
+ * greater than 100），整页降级成「无法加载媒体库」，还把原因误报成
+ * 「请确认后端服务已启动」。
+ */
+const MEDIA_PAGE_SIZE = 100;
+
+/** 最多翻多少页（100 × 20 = 2000 张），避免极端数据量把页面拖死 */
+const MEDIA_MAX_PAGES = 20;
+
+interface MediaLoadResult {
+  ok: boolean;
+  items: MediaAsset[];
+  /** 后端报告的总数（不是本页条数） */
+  total: number;
+  /** 是否因分页上限而只取到部分数据 */
+  truncated: boolean;
+  error?: string;
+  status?: number;
+}
+
+/**
+ * 按后端允许的页大小**翻页取全量图片**。
+ *
+ * 之前用「一次请求取 200 条」的方式，既超过后端上限，也无法覆盖更多图片；
+ * 现在改为按 100/页顺序翻页，取到 totalPages 为止。
+ */
+async function loadAllImages(token: string | null): Promise<MediaLoadResult> {
+  const first = await listMedia(token, {
+    page: 1,
+    limit: MEDIA_PAGE_SIZE,
+    category: 'IMAGE',
+  });
+
+  if (!first.ok) {
+    return {
+      ok: false,
+      items: [],
+      total: 0,
+      truncated: false,
+      error: first.error,
+      status: first.status,
+    };
+  }
+
+  const items = [...first.data.items];
+  const totalPages = Math.min(first.data.totalPages, MEDIA_MAX_PAGES);
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const next = await listMedia(token, {
+      page,
+      limit: MEDIA_PAGE_SIZE,
+      category: 'IMAGE',
+    });
+    // 中途失败：保留已取到的数据继续展示，不再整页报错
+    if (!next.ok) break;
+    items.push(...next.data.items);
+  }
+
+  return {
+    ok: true,
+    items,
+    total: first.data.total,
+    truncated: first.data.totalPages > MEDIA_MAX_PAGES,
+  };
+}
+
+/**
+ * 媒体库加载失败的分类提示。
+ *
+ * 原提示把一切失败都说成「后端服务未启动」，掩盖了真正原因（参数超限、
+ * 无权限、登录过期）。这里按 HTTP 状态码给出可执行的下一步。
+ */
+function mediaLoadErrorMessage(error: string, status: number | undefined): string {
+  if (status === 0) return `无法连接后端服务（${error}）`;
+  if (status === 401) return '登录已失效，请重新登录后再打开本页。';
+  if (status === 403) return `当前账号没有读取媒体库的权限（media.read）：${error}`;
+  if (status === 400) return `请求参数被后端拒绝：${error}`;
+  if (status !== undefined && status >= 500) return `后端服务异常（HTTP ${status}）：${error}`;
+  return error;
+}
+
+/**
  * Media SEO（Phase 5.0，任务书十六节）
  *
  * 图片至少支持 alt / title / caption / description；Alt Text 是 SEO Audit
@@ -21,9 +105,9 @@ export const metadata = {
  */
 export default async function SeoMediaPage() {
   const token = await getSessionToken();
-  const result = await listMedia(token, { limit: 200, category: 'IMAGE' });
+  const result = await loadAllImages(token);
 
-  const items = result.ok ? result.data.items : [];
+  const items = result.ok ? result.items : [];
   const missingAlt = items.filter((item) => (item.altText ?? '').trim() === '');
   const sorted: MediaAsset[] = [...missingAlt, ...items.filter((item) => (item.altText ?? '').trim() !== '')];
 
@@ -41,21 +125,26 @@ export default async function SeoMediaPage() {
         <Card className="mt-6">
           <CardContent className="flex flex-col gap-3 py-8">
             <p className="text-body font-medium text-foreground">无法加载媒体库</p>
-            <p className="text-small text-text-secondary">{result.error}</p>
-            <p className="text-caption text-text-muted">
-              请确认后端服务已启动（默认 4000 端口）且数据库可用。
+            <p className="text-small text-text-secondary">
+              {mediaLoadErrorMessage(result.error ?? '未知错误', result.status)}
             </p>
           </CardContent>
         </Card>
       ) : (
         <>
           <p className="mt-6 text-small text-text-secondary">
-            共 <span className="font-medium text-foreground">{items.length}</span> 张图片 · 缺失 Alt{' '}
+            共 <span className="font-medium text-foreground">{result.total}</span> 张图片 · 缺失 Alt{' '}
             <span className={missingAlt.length > 0 ? 'font-medium text-red-700' : 'font-medium text-green-700'}>
               {missingAlt.length}
             </span>{' '}
             张（缺失项排在最前）
           </p>
+          {result.truncated ? (
+            <p className="mt-1 text-caption text-warning-600">
+              图片数量超过 {MEDIA_PAGE_SIZE * MEDIA_MAX_PAGES} 张，本页只展示前{' '}
+              {MEDIA_PAGE_SIZE * MEDIA_MAX_PAGES} 张；其余请到「媒体资源」页面处理。
+            </p>
+          ) : null}
 
           {sorted.length === 0 ? (
             <Card className="mt-3">

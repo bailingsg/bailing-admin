@@ -14,12 +14,20 @@ export const metadata: Metadata = {
 /**
  * 管理员登录页。
  * 已登录用户访问时直接进入 Dashboard（减少无意义回车）。
+ *
+ * `?error=` 由登录代理在**原生表单提交**（未水合 / 无 JS）失败后回填，
+ * 保证这条路径也有可读提示，而不是静默失败。
  */
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   if (await hasSession()) {
     redirect('/dashboard');
   }
 
+  const { error } = await searchParams;
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
@@ -39,7 +47,7 @@ export default async function LoginPage() {
             <CardDescription>请输入后台账号与口令。</CardDescription>
           </CardHeader>
           <CardContent>
-            <LoginForm />
+            <LoginForm initialError={error} />
           </CardContent>
         </Card>
 

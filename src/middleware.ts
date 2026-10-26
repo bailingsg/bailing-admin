@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE } from '@/lib/session';
+import { PATHNAME_HEADER } from '@/lib/route-permissions';
 
 /**
  * 后台路由保护（边缘层快速拦截）。
@@ -36,10 +37,24 @@ export function middleware(request: NextRequest): NextResponse {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  // 把当前路径透传给 Server Component：布局据此做**路由级权限守卫**。
+  // Server Component 的 headers() 拿不到请求 URL，只能由中间件显式注入；
+  // 这里用 set() 覆盖，客户端自带的同名头不会生效。
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(PATHNAME_HEADER, pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
+  /**
+   * 受保护路由清单 = `app/(dashboard)` 下的**全部**路由段。
+   *
+   * 曾经漏登记 `/accounts`、`/seo`、`/roles`、`/orders` 等段，后果有两个：
+   *   1. 边缘层不再做 Cookie 快速拦截（只靠布局兜底，多一次后端往返）；
+   *   2. 本中间件注入的 `x-admin-pathname` 缺失 → 布局的路由级权限守卫
+   *      拿不到当前路径 → 放行 → 直接输 URL 能进无权限页面（BUG-06 复发）。
+   * 新增 dashboard 路由时必须同步这里。
+   */
   matcher: [
     '/dashboard/:path*',
     '/rfq/:path*',
@@ -50,6 +65,18 @@ export const config = {
     '/factory/:path*',
     '/quality/:path*',
     '/applications/:path*',
+    '/site-content/:path*',
+    '/navigation/:path*',
+    '/lead-distribution/:path*',
+    '/samples/:path*',
+    '/orders/:path*',
+    '/inventory/:path*',
+    '/visitor-records/:path*',
+    '/contacts/:path*',
+    '/accounts/:path*',
+    '/roles/:path*',
+    '/seo/:path*',
+    '/preview/:path*',
     '/settings/:path*',
     '/login',
   ],

@@ -20,15 +20,19 @@ export function HeaderUser({
   email,
   role,
   name,
+  avatarUrl,
 }: {
   email: string;
   role: 'ADMIN' | 'EDITOR';
   name?: string | null;
+  /** 我的头像（未上传时显示姓名首字母占位） */
+  avatarUrl?: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const initial = (name ?? email ?? '').trim().slice(0, 1).toUpperCase() || '?';
 
   React.useEffect(() => {
     if (!open) return;
@@ -76,6 +80,23 @@ export function HeaderUser({
           open && 'bg-accent',
         )}
       >
+        {/* 头像：上传后立即反映，同时提示「这里能点」 */}
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- 后台管理界面，动态图床 URL 无需 next/image 优化
+          <img
+            src={avatarUrl}
+            alt=""
+            aria-hidden="true"
+            className="size-8 shrink-0 rounded-full border border-border object-cover"
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-small font-medium text-text-secondary"
+          >
+            {initial}
+          </span>
+        )}
         <span className="hidden flex-col sm:flex">
           <span className="text-small font-medium text-foreground">{email}</span>
           <span className="text-caption text-text-muted">

@@ -89,26 +89,37 @@ export default async function ContactsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="mt-6 overflow-x-auto rounded-lg border border-border">
-              <table className="w-full border-collapse text-left">
+            /*
+              table-fixed + colgroup：列宽按容器百分比分配，内容不会再撑破表格，
+              因此容器用 overflow-hidden 而不是 overflow-x-auto —— 任何宽度下都不出现横向滚动条。
+              列数从 9 收敛到 6：登录邮箱并入「员工」，公开展示 / 询盘联系人合并为「状态」，
+              目的是让每列都拿到足够宽度，邮箱与电话号码能完整单行显示而不断字。
+            */
+            <div className="mt-6 overflow-hidden rounded-lg border border-border">
+              <table className="w-full table-fixed border-collapse text-left">
+                <colgroup>
+                  <col className="w-[23%]" />
+                  <col className="w-[21%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[5%]" />
+                  <col className="w-[20%]" />
+                </colgroup>
                 <thead className="bg-table-header">
                   <tr className="text-caption text-text-secondary">
-                    <th className="px-4 py-3 font-medium">展示名</th>
-                    <th className="px-4 py-3 font-medium">员工账号</th>
-                    <th className="px-4 py-3 font-medium">展示邮箱</th>
-                    <th className="px-4 py-3 font-medium">WhatsApp</th>
-                    <th className="px-4 py-3 font-medium">手机号</th>
-                    <th className="px-4 py-3 font-medium">公开展示</th>
-                    <th className="px-4 py-3 font-medium">询盘联系人</th>
-                    <th className="px-4 py-3 font-medium">排序</th>
-                    <th className="px-4 py-3 text-right font-medium">操作</th>
+                    <th className="px-2.5 py-3 font-medium">员工</th>
+                    <th className="px-2.5 py-3 font-medium">展示邮箱</th>
+                    <th className="px-2.5 py-3 font-medium">联系方式</th>
+                    <th className="px-2.5 py-3 font-medium">状态</th>
+                    <th className="px-2.5 py-3 font-medium">排序</th>
+                    <th className="px-2.5 py-3 text-right font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {result.data.items.map((contact) => (
                     <tr key={contact.id} className="border-t border-border hover:bg-table-row-hover">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
+                      <td className="px-2.5 py-3">
+                        <div className="flex items-start gap-2">
                           {contact.avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element -- 后台管理界面，动态图床 URL 无需 next/image 优化
                             <img
@@ -124,55 +135,64 @@ export default async function ContactsPage() {
                               {contact.displayName.trim().slice(0, 1) || '?'}
                             </div>
                           )}
-                          <div>
-                            <span className="text-small font-medium text-foreground">
+                          <div className="min-w-0">
+                            <span className="block truncate text-small font-medium text-foreground">
                               {contact.displayName}
+                              {contact.jobTitle ? (
+                                <span className="ml-1.5 font-normal text-caption text-text-muted">
+                                  {contact.jobTitle}
+                                </span>
+                              ) : null}
                             </span>
-                            {contact.jobTitle ? (
-                              <div className="text-caption text-text-muted">{contact.jobTitle}</div>
+                            {contact.employee.name &&
+                            contact.employee.name !== contact.displayName ? (
+                              <div className="truncate text-caption text-text-muted">
+                                账号 {contact.employee.name}
+                              </div>
                             ) : null}
+                            {contact.employee.loginEmail !== contact.displayEmail ? (
+                              <div className="break-all text-caption text-text-muted">
+                                登录 {contact.employee.loginEmail}
+                              </div>
+                            ) : null}
+                            {contact.employee.isActive ? null : (
+                              <Badge variant="destructive" className="mt-1">
+                                账号已停用
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-small text-text-secondary">
-                          {contact.employee.name ?? '—'}
+                      <td className="px-2.5 py-3">
+                        <span className="break-all text-small text-text-secondary">
+                          {contact.displayEmail ?? '—'}
                         </span>
-                        <div className="text-caption text-text-muted">
-                          登录邮箱 {contact.employee.loginEmail}
+                      </td>
+                      <td className="px-2.5 py-3">
+                        <span className="block break-all text-small text-text-secondary">
+                          {contact.whatsapp ?? '—'}
+                        </span>
+                        <span className="block break-all text-caption text-text-muted">
+                          手机 {contact.phone ?? '—'}
+                        </span>
+                      </td>
+                      <td className="px-2.5 py-3">
+                        <div className="flex flex-col items-start gap-1">
+                          {contact.showOnSite ? (
+                            <Badge variant="success">展示中</Badge>
+                          ) : (
+                            <Badge variant="muted">已隐藏</Badge>
+                          )}
+                          {contact.isLeadContact ? (
+                            <Badge variant="warning">询盘联系人</Badge>
+                          ) : (
+                            <span className="text-caption text-text-muted">非询盘联系人</span>
+                          )}
                         </div>
-                        {contact.employee.isActive ? null : (
-                          <Badge variant="destructive" className="mt-1">
-                            账号已停用
-                          </Badge>
-                        )}
                       </td>
-                      <td className="px-4 py-3 text-small text-text-secondary">
-                        {contact.displayEmail ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-small text-text-secondary">
-                        {contact.whatsapp ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-small text-text-secondary">
-                        {contact.phone ?? '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        {contact.showOnSite ? (
-                          <Badge variant="success">展示中</Badge>
-                        ) : (
-                          <Badge variant="muted">已隐藏</Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {contact.isLeadContact ? (
-                          <Badge variant="warning">询盘联系人</Badge>
-                        ) : (
-                          <span className="text-caption text-text-muted">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-small text-text-secondary">{contact.sortOrder}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-2.5 py-3 text-small text-text-secondary">{contact.sortOrder}</td>
+                      <td className="px-2.5 py-3">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
                           {canUpdate ? (
                             <>
                               <ContactFormModal

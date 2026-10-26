@@ -127,6 +127,16 @@ export async function saveProductAction(
   const specifications = parseSpecifications(str(formData, 'specifications'));
   if (!specifications.ok) return { ok: false, error: specifications.error };
 
+  /*
+   * 可选字段的空值语义（BUG-02 修复）：
+   * 产品表单始终渲染这些输入框，因此「空串」代表用户**明确清空**，
+   * 必须写进请求体（null）才能落库；而字段整个缺失（formData.has 为 false）
+   * 表示本次请求不涉及该字段，保持原值不动。
+   *
+   * 旧写法 `if (shortDescription) body.shortDescription = ...` 把空串当 falsy
+   * 跳过，导致清空后刷新旧值回填。清空时发 null 而不是 ''，是为了保持
+   * 「未设置」的原始语义——前台多处用 `?? 兜底` 取值，'' 会顶掉兜底值。
+   */
   const body: Record<string, unknown> = {
     name,
     slug,
@@ -135,15 +145,13 @@ export async function saveProductAction(
     isFeatured: formData.get('isFeatured') === 'on',
   };
 
-  if (shortDescription) body.shortDescription = shortDescription;
-  const material = str(formData, 'material');
-  if (material) body.material = material;
-  if (applications.value.length > 0) body.applications = applications.value;
-  if (specifications.value) body.specifications = specifications.value;
-  const seoTitle = str(formData, 'seoTitle');
-  if (seoTitle) body.seoTitle = seoTitle;
-  const seoDescription = str(formData, 'seoDescription');
-  if (seoDescription) body.seoDescription = seoDescription;
+  if (formData.has('shortDescription')) body.shortDescription = shortDescription || null;
+  if (formData.has('material')) body.material = str(formData, 'material') || null;
+  // 标签全删 = 空数组（后端 IsApplicationsConstraint 允许空数组）
+  if (formData.has('applicationsJson')) body.applications = applications.value;
+  if (formData.has('specifications')) body.specifications = specifications.value ?? null;
+  if (formData.has('seoTitle')) body.seoTitle = str(formData, 'seoTitle') || null;
+  if (formData.has('seoDescription')) body.seoDescription = str(formData, 'seoDescription') || null;
 
   const token = await getSessionToken();
   const result = id
@@ -178,8 +186,34 @@ export async function uploadProductImageAction(
     return { ok: false, error: '请选择要上传的图片文件' };
   }
 
+  /*
+   * 只转发后端 AddProductImageDto 声明的业务字段，不能透传 action 收到的 FormData。
+   *
+   * `<form action={formAction}>` 提交时，Next.js 会往 FormData 里注入
+   * `$ACTION_ID_*` / `$ACTION_REF_*` / `$ACTION_KEY` 等内部字段；后端全局
+   * ValidationPipe 开了 `forbidNonWhitelisted`，会把它们当未声明字段整体 400
+   * （报错即 "property $ACTION_REF_1 should not exist"）。
+   *
+   * 媒体库与联系人头像上传之所以正常，是因为它们手工构造了干净的 FormData。
+   */
+  const payload = new FormData();
+  payload.append('file', file, file.name);
+
+  const alt = str(formData, 'alt');
+  if (alt) payload.append('alt', alt);
+
+  const sortOrder = str(formData, 'sortOrder');
+  if (sortOrder) payload.append('sortOrder', sortOrder);
+
+  /*
+   * 复选框只在勾选时提交（值固定为 "on"，后端 toBool 不识别该字面量，
+   * 这里归一化成 "true"）。未勾选时不传，交给后端按「首图自动设主图」处理，
+   * 传 false 会覆盖掉这条业务规则。
+   */
+  if (formData.get('isPrimary') === 'on') payload.append('isPrimary', 'true');
+
   const token = await getSessionToken();
-  const result = await uploadProductImage(productId, token, formData);
+  const result = await uploadProductImage(productId, token, payload);
   if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath(`/products/${productId}/edit`);

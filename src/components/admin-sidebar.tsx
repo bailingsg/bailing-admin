@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { withBasePath } from '@/lib/base-path';
+import { ROUTE_PERMISSIONS } from '@/lib/route-permissions';
 
 /**
  * 后台导航项。
@@ -34,25 +35,41 @@ export interface NavGroup {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: '概览', permissions: ['dashboard.read'] },
-  { href: '/products', label: '产品管理', permissions: ['products.read'] },
-  { href: '/categories', label: '产品分类', permissions: ['categories.read'] },
-  { href: '/media', label: '媒体资源', permissions: ['media.read'] },
-  { href: '/blog', label: '博客管理', permissions: ['blog.read'] },
-  { href: '/applications', label: '应用场景', permissions: ['applications.read'] },
-  { href: '/factory', label: '工厂实力', permissions: ['factory.read'] },
-  { href: '/quality', label: '质量体系', permissions: ['quality.read'] },
-  { href: '/site-content', label: '站点内容', permissions: ['site.read'] },
-  { href: '/navigation', label: '导航管理', permissions: ['nav.read'] },
-  { href: '/rfq', label: '询盘管理', permissions: ['rfq.read'] },
-  { href: '/lead-distribution', label: '询盘分配', permissions: ['lead_distribution.read'] },
-  { href: '/samples', label: '样品管理', permissions: ['samples.read'] },
-  { href: '/orders', label: '订单管理', permissions: ['orders.read'] },
-  { href: '/inventory', label: '库存管理', permissions: ['inventory.read'] },
-  { href: '/visitor-records', label: '访客记录', permissions: ['visitor_records.read'] },
-  { href: '/contacts', label: '员工联系方式', permissions: ['contacts.read'] },
-  { href: '/accounts', label: '账号管理', permissions: ['accounts.read'] },
-  { href: '/roles', label: '角色与权限', permissions: ['roles.read'] },
+  { href: '/dashboard', label: '概览', permissions: ROUTE_PERMISSIONS['/dashboard'] ?? [] },
+  { href: '/products', label: '产品管理', permissions: ROUTE_PERMISSIONS['/products'] ?? [] },
+  { href: '/categories', label: '产品分类', permissions: ROUTE_PERMISSIONS['/categories'] ?? [] },
+  { href: '/media', label: '媒体资源', permissions: ROUTE_PERMISSIONS['/media'] ?? [] },
+  { href: '/blog', label: '博客管理', permissions: ROUTE_PERMISSIONS['/blog'] ?? [] },
+  {
+    href: '/applications',
+    label: '应用场景',
+    permissions: ROUTE_PERMISSIONS['/applications'] ?? [],
+  },
+  { href: '/factory', label: '工厂实力', permissions: ROUTE_PERMISSIONS['/factory'] ?? [] },
+  { href: '/quality', label: '质量体系', permissions: ROUTE_PERMISSIONS['/quality'] ?? [] },
+  {
+    href: '/site-content',
+    label: '站点内容',
+    permissions: ROUTE_PERMISSIONS['/site-content'] ?? [],
+  },
+  { href: '/navigation', label: '导航管理', permissions: ROUTE_PERMISSIONS['/navigation'] ?? [] },
+  { href: '/rfq', label: '询盘管理', permissions: ROUTE_PERMISSIONS['/rfq'] ?? [] },
+  {
+    href: '/lead-distribution',
+    label: '询盘分配',
+    permissions: ROUTE_PERMISSIONS['/lead-distribution'] ?? [],
+  },
+  { href: '/samples', label: '样品管理', permissions: ROUTE_PERMISSIONS['/samples'] ?? [] },
+  { href: '/orders', label: '订单管理', permissions: ROUTE_PERMISSIONS['/orders'] ?? [] },
+  { href: '/inventory', label: '库存管理', permissions: ROUTE_PERMISSIONS['/inventory'] ?? [] },
+  {
+    href: '/visitor-records',
+    label: '访客记录',
+    permissions: ROUTE_PERMISSIONS['/visitor-records'] ?? [],
+  },
+  { href: '/contacts', label: '员工联系方式', permissions: ROUTE_PERMISSIONS['/contacts'] ?? [] },
+  { href: '/accounts', label: '账号管理', permissions: ROUTE_PERMISSIONS['/accounts'] ?? [] },
+  { href: '/roles', label: '角色与权限', permissions: ROUTE_PERMISSIONS['/roles'] ?? [] },
 ];
 
 /** 可折叠菜单组（Phase 5.0：SEO 管理中心，权限 seo.read） */
@@ -60,19 +77,19 @@ const NAV_GROUPS: NavGroup[] = [
   {
     key: 'seo',
     label: 'SEO',
-    permissions: ['seo.read'],
+    permissions: ROUTE_PERMISSIONS['/seo'] ?? [],
     children: [
-      { href: '/seo', label: '概览', permissions: ['seo.read'] },
-      { href: '/seo/pages', label: '页面', permissions: ['seo.read'] },
-      { href: '/seo/products', label: '产品', permissions: ['seo.read'] },
-      { href: '/seo/blog', label: '博客', permissions: ['seo.read'] },
-      { href: '/seo/media', label: '媒体 SEO', permissions: ['seo.read'] },
-      { href: '/seo/redirects', label: '重定向', permissions: ['seo.read'] },
-      { href: '/seo/sitemap', label: '站点地图', permissions: ['seo.read'] },
-      { href: '/seo/robots', label: '爬虫规则', permissions: ['seo.read'] },
-      { href: '/seo/schema', label: '结构化数据', permissions: ['seo.read'] },
-      { href: '/seo/audit', label: 'SEO 体检', permissions: ['seo.read'] },
-      { href: '/seo/settings', label: '全局设置', permissions: ['seo.read'] },
+      { href: '/seo', label: '概览', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/pages', label: '页面', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/products', label: '产品', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/blog', label: '博客', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/media', label: '媒体 SEO', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/redirects', label: '重定向', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/sitemap', label: '站点地图', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/robots', label: '爬虫规则', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/schema', label: '结构化数据', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/audit', label: 'SEO 体检', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/settings', label: '全局设置', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
     ],
   },
 ];

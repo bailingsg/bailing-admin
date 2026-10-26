@@ -124,7 +124,7 @@ export function ProfileForm({
 
   return (
     <form
-      className="mt-6 flex flex-col gap-6"
+      className="flex flex-col gap-6"
       onSubmit={(event) => {
         event.preventDefault();
         submit();

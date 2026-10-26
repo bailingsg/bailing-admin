@@ -8,6 +8,7 @@ import { frontendUrl } from '@/lib/frontend-url';
 import { getProduct, listCategories } from '@/lib/products';
 import { getCurrentAdmin, hasPermission, type AdminProfile } from '@/lib/api';
 import { getContentPreview, type ContentPreview } from '@/lib/publishing';
+import { mergeProductDraft } from '@/lib/draft-merge';
 import { ProductForm } from '../../product-form';
 import { PublishControls } from '../../../publish-controls';
 import { ImageManager } from './image-manager';
@@ -66,8 +67,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     );
   }
 
-  const product = productResult.data;
   const preview = previewResult.ok ? (previewResult.data as ContentPreview<{ slug: string }>) : null;
+  // 已发布产品的「保存」只写编辑稿（content_drafts），实体行永远是线上版本。
+  // 因此表单必须用「线上版本 + 最新编辑稿」初始化：否则重新打开编辑页看不到
+  // 未发布的修改，用户点一次保存就会把编辑稿覆盖回线上旧值。
+  const product = mergeProductDraft(productResult.data, preview?.draft ?? null);
   const canPublish = hasPermission(admin.ok ? admin.data : null, 'products.publish');
   const canUnpublish = hasPermission(admin.ok ? admin.data : null, 'products.unpublish');
 

@@ -32,8 +32,16 @@ export function ContactVisibilityButton({
 
   return (
     <span className="inline-flex flex-col items-end gap-1">
-      <Button type="button" variant="outline" size="sm" onClick={toggle} disabled={pending}>
-        {pending ? '…' : showOnSite ? '取消展示' : '恢复展示'}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={toggle}
+        disabled={pending}
+        className="whitespace-nowrap"
+        title={showOnSite ? '从官网撤下该联系人' : '重新在官网展示该联系人'}
+      >
+        {pending ? '…' : showOnSite ? '隐藏' : '展示'}
       </Button>
       {error ? (
         <span role="alert" className="text-caption text-destructive">

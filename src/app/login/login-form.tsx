@@ -15,15 +15,26 @@ import { withBasePath } from '@/lib/base-path';
  * HttpOnly Cookie）——浏览器 JS 不接触 JWT 本体。
  * 成功跳转 /dashboard（或 next 参数指定的原目标页）；
  * 凭证错误显示阶段规范要求的统一文案 Invalid email or password。
+ *
+ * ## 为什么 form 上要写 method="post" + action
+ *
+ * 表单默认方法是 GET。React 水合完成前（或浏览器禁用 JS 时）用户按回车，
+ * 浏览器会按原生方式提交 —— GET 会把 `email` / `password` 拼进 URL，
+ * 于是口令出现在地址栏、浏览器历史、服务端访问日志和 Referer 里（BUG-05）。
+ * 显式 `method="post"` + `action="/api/auth/login"` 后，未水合的提交改为
+ * POST 到登录代理，口令只在请求体里；代理对该编码返回 303 跳转，
+ * 因此未水合时也能正常登录，而不是落到一个 405 页面。
  */
-export function LoginForm() {
+export function LoginForm({ initialError }: { initialError?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next');
+  const rawNext = searchParams.get('next');
+  /** 站内相对路径才作为落地页（防开放重定向） */
+  const next = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null;
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(initialError ?? null);
   const [loading, setLoading] = React.useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -58,8 +69,7 @@ export function LoginForm() {
 
       if (response.ok) {
         // 服务端已设置 HttpOnly Cookie；跳转到原目标页或 Dashboard
-        const target = next && next.startsWith('/') ? next : '/dashboard';
-        router.replace(target);
+        router.replace(next ?? '/dashboard');
         router.refresh();
         return;
       }
@@ -74,7 +84,16 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5" aria-label="管理员登录">
+    <form
+      onSubmit={onSubmit}
+      method="post"
+      action={withBasePath('/api/auth/login')}
+      noValidate
+      className="flex flex-col gap-5"
+      aria-label="管理员登录"
+    >
+      {/* 未水合 / 无 JS 的原生提交也要能回到原目标页 */}
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <div className="flex flex-col gap-2">
         <Label htmlFor="email" required>
           邮箱

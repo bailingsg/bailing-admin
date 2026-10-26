@@ -8,6 +8,7 @@ import { frontendUrl } from '@/lib/frontend-url';
 import { getApplication } from '@/lib/enterprise';
 import { getCurrentAdmin, hasPermission, type AdminProfile } from '@/lib/api';
 import { getContentPreview, type ContentPreview } from '@/lib/publishing';
+import { mergeApplicationDraft } from '@/lib/draft-merge';
 import { ApplicationForm } from '../../application-form';
 import { PublishControls } from '../../../publish-controls';
 import { DeleteApplicationButton } from '../../delete-application-button';
@@ -49,10 +50,12 @@ export default async function EditApplicationPage({ params }: { params: Promise<
     );
   }
 
-  const application = result.data;
   const preview = previewResult.ok
     ? (previewResult.data as ContentPreview<{ slug: string }>)
     : null;
+  // 已发布场景的「保存」只写编辑稿 → 表单用「线上版本 + 最新编辑稿」初始化，
+  // 否则重新打开看不到未发布修改，一次普通保存就把草稿覆盖回线上旧值。
+  const application = await mergeApplicationDraft(result.data, preview?.draft ?? null, token);
   const canPublish = hasPermission(admin.ok ? admin.data : null, 'applications.publish');
   const canUnpublish = hasPermission(admin.ok ? admin.data : null, 'applications.unpublish');
 

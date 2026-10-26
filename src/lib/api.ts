@@ -24,6 +24,8 @@ export interface AdminProfile {
   permissions: string[];
   isSuperAdmin: boolean;
   jobTitle: string | null;
+  /** 我的头像地址（未上传为 null）；顶栏与账号设置页共用 */
+  avatarUrl: string | null;
   isActive: boolean;
   lastLoginAt: string | null;
 }
@@ -111,14 +113,16 @@ export async function authorizedRequest<T>(
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
   // FormData 请求让 fetch 自行生成 multipart boundary，不能强制 JSON 头
-  if (!(init?.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+  const isFormData = init?.body instanceof FormData;
+  if (!isFormData) headers['Content-Type'] = 'application/json';
 
   try {
     const response = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers: { ...headers, ...(init?.headers ?? {}) },
       cache: 'no-store',
-      signal: AbortSignal.timeout(5000),
+      // 上传（multipart）走 COS 时几 MB 图片很容易超过 5s，单独放宽到 60s
+      signal: AbortSignal.timeout(isFormData ? 60_000 : 5000),
     });
 
     const json = (await response.json().catch(() => null)) as ApiSuccess<T> | ApiErrorPayload | null;
@@ -155,6 +159,8 @@ export interface MyContact {
   displayEmail: string | null;
   whatsapp: string | null;
   phone: string | null;
+  /** 头像地址（自助上传；由后端按 storageKey 动态生成，换存储/换域名仍有效） */
+  avatarUrl: string | null;
   showOnSite: boolean;
 }
 
@@ -192,6 +198,43 @@ export function updateMyProfile(
 ): Promise<ApiResult<MyProfile>> {
   return authorizedRequest<MyProfile>('/auth/profile', token, {
     method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * 自助上传 / 替换我的头像（multipart/form-data，字段名 file）。
+ *
+ * 直接把 FormData 交给 fetch，由它生成 boundary；**不能**转 base64 走 JSON。
+ * 后端「先传新对象 → 落库 → 删除旧对象」，服务器上不会残留旧头像文件。
+ */
+export function uploadMyAvatar(
+  token: string | null,
+  formData: FormData,
+): Promise<ApiResult<MyProfile>> {
+  return authorizedRequest<MyProfile>('/auth/profile/avatar', token, {
+    method: 'PUT',
+    body: formData,
+  });
+}
+
+/** 自助移除我的头像（后端同步删除存储对象，不留孤儿文件） */
+export function removeMyAvatar(token: string | null): Promise<ApiResult<MyProfile>> {
+  return authorizedRequest<MyProfile>('/auth/profile/avatar', token, { method: 'DELETE' });
+}
+
+/**
+ * 自助修改登录口令。
+ *
+ * 必须带当前口令：后端校验失败返回 400（不是 401），
+ * 因此不会被当成「登录失效」把人踢回登录页。
+ */
+export function changeMyPassword(
+  token: string | null,
+  input: { currentPassword: string; newPassword: string },
+): Promise<ApiResult<{ changed: true }>> {
+  return authorizedRequest<{ changed: true }>('/auth/change-password', token, {
+    method: 'POST',
     body: JSON.stringify(input),
   });
 }
