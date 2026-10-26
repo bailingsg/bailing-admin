@@ -3,9 +3,10 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Overlay } from '@/components/ui/overlay';
 
 /**
- * Modal —— 通用弹窗容器（Phase 4.6 新增）。
+ * Modal —— 通用弹窗容器（Phase 4.6 新增，2026-10-26 收敛到 Overlay 基元）。
  *
  * 后台的「创建 / 查看 / 编辑」类交互统一走本组件，行为约定：
  *   · Esc 与点击遮罩均可关闭；关闭 ≠ 提交（与「关闭弹窗 ≠ 关闭计划」同思路）
@@ -14,6 +15,10 @@ import { Button } from '@/components/ui/button';
  *
  * 不使用原生 alert/confirm：两步确认一律由调用方在 footer 渲染第二个按钮，
  * 避免误触与不可读的交互。
+ *
+ * 实现说明：遮罩本身由 `components/ui/overlay.tsx` 统一提供，
+ * 本文件只负责「标题区 + 内容区 + footer」的排版结构。
+ * 遮罩基元负责渲染、Esc 关闭、滚动锁定与焦点管理。
  */
 export interface ModalProps {
   open: boolean;
@@ -42,58 +47,37 @@ export function Modal({
   footer,
   maxWidth = 'md',
 }: ModalProps) {
-  React.useEffect(() => {
-    if (!open) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 py-8"
-      onClick={onClose}
+    <Overlay
+      open={open}
+      onClose={onClose}
+      label={title}
+      align="top"
+      panelClassName={cn(
+        'flex flex-col rounded-lg border border-border bg-background shadow-lg',
+        MAX_WIDTH_CLASS[maxWidth],
+      )}
     >
-      <div
-        className={cn(
-          'flex w-full flex-col rounded-lg border border-border bg-background shadow-lg',
-          MAX_WIDTH_CLASS[maxWidth],
-        )}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div>
-            <h2 className="text-body font-semibold text-foreground">{title}</h2>
-            {description ? (
-              <p className="mt-1 text-caption text-text-muted">{description}</p>
-            ) : null}
-          </div>
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            关闭
-          </Button>
+      <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <div>
+          <h2 className="text-body font-semibold text-foreground">{title}</h2>
+          {description ? (
+            <p className="mt-1 text-caption text-text-muted">{description}</p>
+          ) : null}
         </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
-
-        {footer ? (
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-4">
-            {footer}
-          </div>
-        ) : null}
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+          关闭
+        </Button>
       </div>
-    </div>
+
+      <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+
+      {footer ? (
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-4">
+          {footer}
+        </div>
+      ) : null}
+    </Overlay>
   );
 }
 

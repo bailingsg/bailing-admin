@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { brandPalette } from '@/tokens';
 import { withBasePath } from '@/lib/base-path';
+import { OverlayGuard } from '@/components/overlay-guard';
 
 /** 字体与主站一致：Inter（拉丁）+ 中文回退栈（见设计令牌 --font-sans） */
 const inter = Inter({
@@ -51,7 +52,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="zh-CN" translate="no" className={`notranslate ${inter.variable}`}>
-      <body className="min-h-screen bg-background text-foreground antialiased">{children}</body>
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        {/* 清理浏览器扩展注入的全屏压暗层（详见 components/overlay-guard.tsx） */}
+        <OverlayGuard />
+        {children}
+      </body>
     </html>
   );
 }

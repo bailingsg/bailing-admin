@@ -51,14 +51,8 @@ export function SectionMediaPicker({
     void load(1, '');
   }, [open, load]);
 
-  React.useEffect(() => {
-    if (!open) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
+  // 注意：Esc / 点击遮罩关闭已由 Modal 底层的 Overlay 基元统一处理，
+  // 本组件无需再单独注册 keydown 监听。
 
   if (!open) return null;
 

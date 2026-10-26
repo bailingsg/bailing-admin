@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
+import { Overlay } from '@/components/ui/overlay';
 import type { MediaAsset } from '@/lib/media';
 import { fetchMediaForApplication } from './actions';
 
@@ -47,29 +48,15 @@ export function ApplicationCoverPicker({
     setDraftKeyword('');
   }, [open, load]);
 
-  React.useEffect(() => {
-    if (!open) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
-
   if (!open) return null;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="从媒体库选择封面"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+    <Overlay
+      open
+      onClose={onClose}
+      label="从媒体库选择封面"
+      panelClassName="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg"
     >
-      <div
-        className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg"
-        onClick={(event) => event.stopPropagation()}
-      >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
           <div>
             <h2 className="text-body font-semibold text-foreground">从媒体库选择封面</h2>
@@ -170,7 +157,6 @@ export function ApplicationCoverPicker({
             </div>
           </div>
         ) : null}
-      </div>
-    </div>
+    </Overlay>
   );
 }

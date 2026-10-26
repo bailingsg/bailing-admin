@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Overlay } from '@/components/ui/overlay';
 import { formatDateTime } from '@/lib/format';
 import {
   formatFileSize,
@@ -385,63 +386,51 @@ function MediaCard({ asset }: { asset: MediaAsset }) {
 /* ----------------------------- 预览弹窗 ----------------------------- */
 
 function PreviewModal({ asset, onClose }: { asset: MediaAsset; onClose: () => void }) {
-  React.useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`预览 ${asset.originalName}`}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+    <Overlay
+      open
+      onClose={onClose}
+      label={`预览 ${asset.originalName}`}
+      backdropClassName="bg-black/70"
+      panelClassName="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-background"
     >
-      <div className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-background">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <p className="truncate text-small font-medium text-foreground" title={asset.originalName}>
-            {asset.originalName}
-          </p>
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            关闭
-          </Button>
-        </div>
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-muted p-4">
-          {/* eslint-disable-next-line @next/next/no-img-element -- 预览动态媒体 URL */}
-          <img
-            src={asset.url}
-            alt={asset.altText ?? asset.originalName}
-            className="max-h-[60vh] max-w-full object-contain"
-          />
-        </div>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 px-4 py-3 text-small sm:grid-cols-4">
-          <Meta label="类型" value={mediaTypeLabel(asset.mimeType)} />
-          <Meta label="用途" value={mediaUsageLabel(asset.usage)} />
-          <Meta
-            label="引用"
-            value={
-              asset.referenceCount > 0
-                ? `被 ${asset.referenceCount} 处业务记录引用`
-                : '未被引用'
-            }
-          />
-          <Meta label="大小" value={formatFileSize(asset.size)} />
-          <Meta
-            label="尺寸"
-            value={asset.width && asset.height ? `${asset.width}×${asset.height}` : '—'}
-          />
-          <Meta label="上传时间" value={formatDateTime(asset.createdAt)} />
-          <Meta label="存储键" value={asset.storageKey} mono />
-          <Meta label="提供方" value={asset.provider === 'LOCAL' ? '本地存储' : '腾讯云 COS'} />
-        </dl>
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <p className="truncate text-small font-medium text-foreground" title={asset.originalName}>
+          {asset.originalName}
+        </p>
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+          关闭
+        </Button>
       </div>
-    </div>
+      <div className="flex min-h-0 flex-1 items-center justify-center bg-muted p-4">
+        {/* eslint-disable-next-line @next/next/no-img-element -- 预览动态媒体 URL */}
+        <img
+          src={asset.url}
+          alt={asset.altText ?? asset.originalName}
+          className="max-h-[60vh] max-w-full object-contain"
+        />
+      </div>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 px-4 py-3 text-small sm:grid-cols-4">
+        <Meta label="类型" value={mediaTypeLabel(asset.mimeType)} />
+        <Meta label="用途" value={mediaUsageLabel(asset.usage)} />
+        <Meta
+          label="引用"
+          value={
+            asset.referenceCount > 0
+              ? `被 ${asset.referenceCount} 处业务记录引用`
+              : '未被引用'
+          }
+        />
+        <Meta label="大小" value={formatFileSize(asset.size)} />
+        <Meta
+          label="尺寸"
+          value={asset.width && asset.height ? `${asset.width}×${asset.height}` : '—'}
+        />
+        <Meta label="上传时间" value={formatDateTime(asset.createdAt)} />
+        <Meta label="存储键" value={asset.storageKey} mono />
+        <Meta label="提供方" value={asset.provider === 'LOCAL' ? '本地存储' : '腾讯云 COS'} />
+      </dl>
+    </Overlay>
   );
 }
 
