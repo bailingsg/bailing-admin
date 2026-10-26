@@ -6,7 +6,7 @@ import { SESSION_COOKIE, isSecureRequest } from '@/lib/session';
  *
  * JWT 为无状态令牌，服务端不做黑名单（阶段约定不引入 refresh token/
  * 令牌撤销表）：登出即清除 HttpOnly Cookie，客户端失去调用凭证。
- * 已签发未过期的令牌（默认 15m）在理论上仍可被持有者使用——
+ * 已签发未过期的令牌（默认 12h）在理论上仍可被持有者使用——
  * 这是 access-token 方案的已知取舍，窗口期与有效期等长。
  *
  * `secure` 必须与登录时**完全一致**：纯 HTTP 部署下若清除指令带

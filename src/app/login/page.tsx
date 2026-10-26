@@ -50,10 +50,6 @@ export default async function LoginPage({
             <LoginForm initialError={error} />
           </CardContent>
         </Card>
-
-        <p className="mt-4 text-center text-caption text-text-muted">
-          会话有效期 15 分钟 · HttpOnly Cookie · 仅限内部使用
-        </p>
       </div>
     </main>
   );

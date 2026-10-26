@@ -22,9 +22,14 @@ import type { AdminRole } from './api';
 /** 会话 Cookie 名称 */
 export const SESSION_COOKIE = 'admin_session';
 
-/** 会话有效期（秒）。与后端 JWT_EXPIRES_IN（默认 15m）保持一致 */
+/**
+ * 会话有效期（秒）。与后端 JWT_EXPIRES_IN（默认 12h = 43200s）保持一致。
+ *
+ * 两者必须同步：Cookie 比令牌短 → 用户被提前踢回登录页；
+ * Cookie 比令牌长 → Cookie 还在但接口 401，表现为「页面能打开、数据全空」。
+ */
 export const SESSION_MAX_AGE_SECONDS = Number.parseInt(
-  process.env.ADMIN_SESSION_MAX_AGE ?? '900',
+  process.env.ADMIN_SESSION_MAX_AGE ?? '43200',
   10,
 );
 
