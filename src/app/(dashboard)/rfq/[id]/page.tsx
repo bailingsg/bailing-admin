@@ -12,7 +12,9 @@ import {
 import { formatDateTime } from '@/lib/format';
 import { getRfqDetail } from '@/lib/rfq';
 import { getSessionToken } from '@/lib/session';
+import { RfqNotifyBadge } from '../notify-badge';
 import { RfqStatusBadge } from '../status-badge';
+import { ResendNotifyButton } from './resend-button';
 import { StatusUpdater } from './status-updater';
 
 export const dynamic = 'force-dynamic';
@@ -132,6 +134,31 @@ export default async function RfqDetailPage({ params }: { params: Promise<{ id: 
           </CardContent>
         </Card>
       </div>
+
+      {/* 通知投递 */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>通知投递</CardTitle>
+          <CardDescription>询盘通知邮件是否已发送给承接人</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <RfqNotifyBadge status={rfq.notifyStatus} />
+            <span className="text-caption text-text-muted">
+              已尝试 {rfq.notifyAttempts} 次
+              {rfq.notifiedAt ? ` · 最近成功：${formatDateTime(rfq.notifiedAt)}` : ''}
+            </span>
+          </div>
+          {rfq.notifyStatus === 'FAILED' && rfq.notifyError ? (
+            <p className="text-caption break-words text-destructive">
+              最近失败原因：{rfq.notifyError}
+            </p>
+          ) : null}
+          <div>
+            <ResendNotifyButton id={rfq.id} />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 需求内容 */}
       <Card className="mt-6">

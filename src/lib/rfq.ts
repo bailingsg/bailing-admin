@@ -22,6 +22,15 @@ export const RFQ_STATUS_LABELS: Record<RfqStatus, string> = {
   CLOSED: '已关闭',
 };
 
+/** 询盘通知邮件投递状态（与后端 RfqNotifyStatus 一致） */
+export type RfqNotifyStatus = 'PENDING' | 'SENT' | 'FAILED';
+
+export const RFQ_NOTIFY_LABELS: Record<RfqNotifyStatus, string> = {
+  PENDING: '待发送',
+  SENT: '已发送',
+  FAILED: '发送失败',
+};
+
 export interface RfqListItem {
   id: string;
   name: string;
@@ -37,6 +46,10 @@ export interface RfqListItem {
   assigneeName: string | null;
   assigneeEmail: string | null;
   assignedAt: string | null;
+  notifyStatus: RfqNotifyStatus;
+  notifiedAt: string | null;
+  notifyError: string | null;
+  notifyAttempts: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -92,5 +105,22 @@ export function updateRfqStatus(
   return authorizedRequest<RfqDetail>(`/rfq/${encodeURIComponent(id)}/status`, token, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
+  });
+}
+
+/** 人工补发询盘通知邮件的返回结果 */
+export interface RfqResendResult {
+  sent: boolean;
+  reason?: string;
+  error?: string;
+}
+
+/** 人工补发询盘通知邮件（需要 rfq.update） */
+export function resendRfqNotification(
+  token: string | null,
+  id: string,
+): Promise<RfqResult<RfqResendResult>> {
+  return authorizedRequest<RfqResendResult>(`/rfq/${encodeURIComponent(id)}/notify`, token, {
+    method: 'POST',
   });
 }

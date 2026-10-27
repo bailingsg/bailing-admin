@@ -13,6 +13,7 @@ import {
   type RfqStatus,
 } from '@/lib/rfq';
 import { getSessionToken } from '@/lib/session';
+import { RfqNotifyBadge } from './notify-badge';
 import { RfqStatusBadge } from './status-badge';
 
 export const dynamic = 'force-dynamic';
@@ -104,6 +105,7 @@ export default async function RfqListPage({
                   <Th>Product</Th>
                   <Th>Status</Th>
                   <Th>分配至</Th>
+                  <Th>通知</Th>
                   <Th>Created</Th>
                 </tr>
               </thead>
@@ -129,6 +131,9 @@ export default async function RfqListPage({
                       ) : (
                         <span className="text-text-muted">未分配</span>
                       )}
+                    </Td>
+                    <Td>
+                      <RfqNotifyBadge status={item.notifyStatus} />
                     </Td>
                     <Td className="whitespace-nowrap">{formatDateTime(item.createdAt)}</Td>
                   </tr>
@@ -156,6 +161,9 @@ export default async function RfqListPage({
                       <span className="text-caption text-text-muted">
                         分配至：
                         {item.assigneeName ?? '未分配'}
+                      </span>
+                      <span className="flex items-center gap-2 text-caption text-text-muted">
+                        通知：<RfqNotifyBadge status={item.notifyStatus} />
                       </span>
                       <span className="text-caption text-text-muted">
                         {formatDateTime(item.createdAt)}
