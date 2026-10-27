@@ -5,6 +5,8 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { mergeDraftForPreview } from '@/lib/draft-merge';
+import { buildPreviewDoc, diffPreviewDocs, labelOfKeys, type PreviewDoc } from '@/lib/preview-doc';
 import { getSessionToken } from '@/lib/session';
 import {
   PUBLISHABLE_LABELS,
@@ -13,7 +15,9 @@ import {
   isPublishableKind,
   type ContentPreview,
   type ContentRevision,
+  type PublishableKind,
 } from '@/lib/publishing';
+import { PreviewDocView } from './preview-doc-view';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,17 +26,33 @@ export const metadata = {
   description: '对照查看线上版本与未发布的编辑稿。',
 };
 
+/** 各内容类型的后台列表路由（面包屑 / 返回按钮） */
+const LIST_ROUTES: Record<PublishableKind, string> = {
+  products: '/products',
+  'blog/posts': '/blog',
+  factory: '/factory',
+  quality: '/quality',
+  applications: '/applications',
+  'site/sections': '/site-content',
+};
+
+/** 线上版本一侧不参与高亮（避免把「基准」也染黄） */
+const EMPTY_SET: Set<string> = new Set();
+
 /**
- * 通用预览页（Phase 1）。
+ * 通用预览页（Phase 1，Phase 1.1 改为可读渲染）。
  *
  * 路由：/preview/<kind>/<id>，kind 为后端控制器路径片段
  * （products / blog/posts / factory / quality / applications / site/sections）。
  *
  * 语义：
  *   · 左侧是**线上版本**（公开站此刻看到的内容）
- *   · 右侧是**编辑稿**（尚未发布，公开站看不到）
- *   · 顶部列出两者不一致的字段，便于发布前核对
+ *   · 右侧是**编辑稿**（线上版本 + 未发布改动叠加后的效果，即「发布后会怎样」）
+ *   · 两侧用同一套渲染器，有差异的字段高亮，顶部列出差异清单
  *   · 只有持有该模块 read 权限的后台账号能访问（后端 preview 接口鉴权）
+ *
+ * 为什么不再直接 dump JSON：预览的目的是「发布前肉眼核对」，而 JSON 里正文是
+ * 转义后的 HTML、封面只有 id、SEO 与关联 id 混在一起，实际无法核对。
  */
 export default async function ContentPreviewPage({
   params,
@@ -69,30 +89,52 @@ export default async function ContentPreviewPage({
   }
 
   const preview = result.data as ContentPreview<Record<string, unknown>>;
-  const changed = diffKeys(preview.entity, preview.draft);
   const label = PUBLISHABLE_LABELS[kind];
-  const history: ContentRevision[] = revisions.ok && Array.isArray(revisions.data) ? revisions.data : [];
+  const listHref = LIST_ROUTES[kind];
+  const history: ContentRevision[] =
+    revisions.ok && Array.isArray(revisions.data) ? revisions.data : [];
+
+  // 线上版本视图
+  const publishedDoc = buildPreviewDoc(kind, preview.entity);
+
+  // 编辑稿视图：把草稿叠加到线上版本后再归一（草稿是部分 Update DTO，直接渲染会缺字段）
+  let draftDoc: PreviewDoc | null = null;
+  let changed = new Set<string>();
+  let mergeError: string | null = null;
+  if (preview.draft) {
+    try {
+      const merged = await mergeDraftForPreview(kind, preview.entity, preview.draft, token);
+      draftDoc = buildPreviewDoc(kind, merged);
+      changed = diffPreviewDocs(publishedDoc, draftDoc);
+    } catch (error) {
+      // 编辑稿合并失败（媒体回查异常等）不应让整页崩掉：降级为只展示线上版本
+      mergeError = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  const changedLabels = draftDoc ? labelOfKeys(draftDoc, changed) : [];
+  const isPublished = preview.status === 'PUBLISHED';
 
   return (
     <Container width="page" className="py-8">
       <PageHeader
         title={`预览：${label}`}
-        description="左侧是公开站此刻的线上版本，右侧是尚未发布的编辑稿。"
+        description="左侧是公开站此刻的线上版本，右侧是叠加了未发布改动后的效果（即发布后的样子）。"
         breadcrumb={
-          <Link href={`/${kind.split('/')[0]}`} className="hover:text-foreground">
+          <Link href={listHref} className="hover:text-foreground">
             返回列表
           </Link>
         }
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link href={`/${kind.split('/')[0]}`}>返回列表</Link>
+            <Link href={listHref}>返回列表</Link>
           </Button>
         }
       />
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        <Badge variant={preview.status === 'PUBLISHED' ? 'success' : 'muted'}>
-          {preview.status === 'PUBLISHED' ? '已发布' : '未上线'}
+        <Badge variant={isPublished ? 'success' : 'muted'}>
+          {isPublished ? '已发布' : '未上线'}
         </Badge>
         <span className="text-caption text-text-secondary">
           线上版本 v{preview.publishedVersion}
@@ -105,33 +147,42 @@ export default async function ContentPreviewPage({
         <CardHeader>
           <CardTitle>字段差异</CardTitle>
         </CardHeader>
-        <CardContent>
-          {changed.length === 0 ? (
+        <CardContent className="flex flex-col gap-2">
+          {!draftDoc ? (
             <p className="text-small text-text-secondary">
-              线上版本与编辑稿内容一致（或当前没有编辑稿）。
+              当前没有编辑稿，线上版本即最终内容。
+            </p>
+          ) : mergeError ? (
+            <p className="text-small text-destructive">
+              编辑稿解析失败：{mergeError}（右侧未展示编辑稿效果）
+            </p>
+          ) : changed.size === 0 ? (
+            <p className="text-small text-text-secondary">
+              编辑稿与线上版本内容一致，发布不会改变公开站呈现。
             </p>
           ) : (
             <p className="text-small text-text-secondary">
-              以下字段与线上版本不同：
-              <span className="ml-1 font-mono text-foreground">{changed.join('、')}</span>
+              以下内容与线上版本不同（右侧已高亮）：
+              <span className="ml-1 font-medium text-foreground">{changedLabels.join('、')}</span>
             </p>
           )}
-          <p className="mt-2 text-caption text-text-muted">
-            左侧为公开 DTO（含关联对象），右侧为编辑稿的 Update DTO 快照，字段命名不完全相同
-            （如 coverMedia 与 coverMediaId），因此差异列表可能包含「等价字段」。
-          </p>
+          {!isPublished ? (
+            <p className="text-caption text-text-muted">
+              该{label}当前未上线，公开站不可见；「线上版本」展示的是最近一次发布的内容。
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>线上版本（公开站可见）</CardTitle>
+            <CardTitle>
+              线上版本{isPublished ? '（公开站可见）' : '（已下架，公开站不可见）'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <pre className="max-h-[36rem] overflow-auto rounded-md bg-table-header p-3 text-caption leading-relaxed text-foreground">
-              {JSON.stringify(preview.entity, null, 2)}
-            </pre>
+            <PreviewDocView doc={publishedDoc} changed={EMPTY_SET} />
           </CardContent>
         </Card>
 
@@ -140,18 +191,46 @@ export default async function ContentPreviewPage({
             <CardTitle>编辑稿（未发布）</CardTitle>
           </CardHeader>
           <CardContent>
-            {preview.draft ? (
-              <pre className="max-h-[36rem] overflow-auto rounded-md bg-table-header p-3 text-caption leading-relaxed text-foreground">
-                {JSON.stringify(preview.draft, null, 2)}
-              </pre>
+            {draftDoc ? (
+              <PreviewDocView doc={draftDoc} changed={changed} />
             ) : (
-              <p className="text-small text-text-secondary">
-                没有编辑稿：当前保存的内容就是线上版本。
-              </p>
+              <div className="flex flex-col gap-2 py-6">
+                <p className="text-small font-medium text-foreground">没有编辑稿</p>
+                <p className="text-small text-text-secondary">
+                  当前保存的内容就是线上版本，右侧没有可对照的未发布改动。
+                </p>
+                <p className="text-caption text-text-muted">
+                  在编辑页修改并保存后，这里会显示「发布后的效果」。
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      <details className="mt-6 rounded-lg border border-border bg-surface-elevated">
+        <summary className="cursor-pointer px-4 py-3 text-small font-medium text-text-secondary hover:text-foreground">
+          查看原始 JSON（排障用）
+        </summary>
+        <div className="grid gap-4 border-t border-border p-4 xl:grid-cols-2">
+          <div>
+            <p className="mb-2 text-caption text-text-muted">线上版本 DTO</p>
+            <pre className="max-h-[28rem] overflow-auto rounded-md bg-table-header p-3 text-caption leading-relaxed text-foreground">
+              {JSON.stringify(preview.entity, null, 2)}
+            </pre>
+          </div>
+          <div>
+            <p className="mb-2 text-caption text-text-muted">编辑稿 payload（Update DTO 快照）</p>
+            {preview.draft ? (
+              <pre className="max-h-[28rem] overflow-auto rounded-md bg-table-header p-3 text-caption leading-relaxed text-foreground">
+                {JSON.stringify(preview.draft, null, 2)}
+              </pre>
+            ) : (
+              <p className="text-small text-text-secondary">无编辑稿</p>
+            )}
+          </div>
+        </div>
+      </details>
 
       <Card className="mt-6">
         <CardHeader>
@@ -204,18 +283,4 @@ export default async function ContentPreviewPage({
       </Card>
     </Container>
   );
-}
-
-/** 找出两侧 JSON 不一致的顶层字段（浅比较，够用于发布前核对） */
-function diffKeys(
-  entity: Record<string, unknown>,
-  draft: Record<string, unknown> | null,
-): string[] {
-  if (!draft) return [];
-  const keys = new Set([...Object.keys(entity), ...Object.keys(draft)]);
-  const changed: string[] = [];
-  for (const key of keys) {
-    if (JSON.stringify(entity[key]) !== JSON.stringify(draft[key])) changed.push(key);
-  }
-  return changed.sort();
 }

@@ -1,6 +1,8 @@
 import { getMedia } from './media';
 import { getProduct, type CmsProductDetail } from './products';
 import type { BlogCoverMediaRef, BlogPostDetail } from './blog';
+import type { SiteSection, SiteSectionItem, SiteSectionStat } from './rbac';
+import type { PublishableKind } from './publishing';
 import {
   FACTORY_SECTION_TYPE_LABELS,
   QUALITY_RECORD_TYPE_LABELS,
@@ -510,4 +512,134 @@ export async function mergeQualityRecordDraft(
   }
 
   return merged;
+}
+
+/* ============================== 站点分区 ============================== */
+
+/** 站点分区卡片条目（草稿里是整体替换语义） */
+function draftItems(value: unknown): SiteSectionItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (item === null || typeof item !== 'object') return null;
+      const record = item as Record<string, unknown>;
+      const title = text(record.title);
+      if (!title) return null;
+      return { title, description: text(record.description), href: text(record.href) };
+    })
+    .filter((item): item is SiteSectionItem => item !== null);
+}
+
+/** 站点分区统计数据 */
+function draftStats(value: unknown): SiteSectionStat[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (item === null || typeof item !== 'object') return null;
+      const record = item as Record<string, unknown>;
+      const label = text(record.label);
+      const stat = text(record.value);
+      if (!label || !stat) return null;
+      return { label, value: stat };
+    })
+    .filter((item): item is SiteSectionStat => item !== null);
+}
+
+/**
+ * 站点分区编辑稿合并。
+ *
+ * 站点分区没有独立编辑页（编辑在列表弹窗内完成），预览页是它唯一的
+ * 「发布前看一眼」入口，因此这里必须与弹窗提交的字段严格一致：
+ * 文案字段逐个覆盖，媒体按 mediaId 回查 URL，items / stats 为整体替换。
+ */
+export async function mergeSiteSectionDraft(
+  section: SiteSection,
+  draft: Draft,
+  token: string | null,
+): Promise<SiteSection> {
+  if (!draft) return section;
+  const merged: SiteSection = { ...section };
+
+  if (has(draft, 'eyebrow')) merged.eyebrow = text(draft.eyebrow);
+  if (has(draft, 'title')) merged.title = text(draft.title);
+  if (has(draft, 'subtitle')) merged.subtitle = text(draft.subtitle);
+  if (has(draft, 'body')) merged.body = text(draft.body);
+  if (has(draft, 'ctaLabel')) merged.ctaLabel = text(draft.ctaLabel);
+  if (has(draft, 'ctaUrl')) merged.ctaUrl = text(draft.ctaUrl);
+  if (has(draft, 'sortOrder')) merged.sortOrder = numOr(draft.sortOrder, section.sortOrder);
+  if (has(draft, 'items')) merged.items = draftItems(draft.items);
+  if (has(draft, 'stats')) merged.stats = draftStats(draft.stats);
+
+  const media = await mergeCover(token, draft, 'mediaId', section.media?.id ?? null, section.media);
+  if (media) {
+    merged.media = media.ref
+      ? {
+          id: media.ref.id,
+          url: media.ref.url,
+          altText: media.ref.altText,
+          width: media.ref.width,
+          height: media.ref.height,
+          mimeType: media.ref.mimeType,
+        }
+      : null;
+  }
+
+  return merged;
+}
+
+/* ============================== 预览页调度 ============================== */
+
+/**
+ * 预览页专用：按内容类型把编辑稿合并到线上版本上。
+ *
+ * 预览要展示的是「发布后长什么样」，所以必须先把编辑稿叠加到实体行上
+ * （编辑稿是**部分** Update DTO，直接渲染会缺字段）。这里复用编辑页同一套
+ * merge* 函数，保证「预览看到的」与「编辑页表单里填的」永远一致。
+ *
+ * 入参用 `Record<string, unknown>`：预览接口的 entity 是后端详情 DTO，
+ * 与各模块的 admin 类型结构一致但不在同一类型声明下，故在此集中断言一次。
+ */
+export async function mergeDraftForPreview(
+  kind: PublishableKind,
+  entity: Record<string, unknown>,
+  draft: Record<string, unknown>,
+  token: string | null,
+): Promise<Record<string, unknown>> {
+  switch (kind) {
+    case 'products':
+      return mergeProductDraft(entity as unknown as CmsProductDetail, draft) as unknown as Record<
+        string,
+        unknown
+      >;
+    case 'blog/posts':
+      return (await mergeBlogPostDraft(
+        entity as unknown as BlogPostDetail,
+        draft,
+        token,
+      )) as unknown as Record<string, unknown>;
+    case 'applications':
+      return (await mergeApplicationDraft(
+        entity as unknown as ApplicationDetail,
+        draft,
+        token,
+      )) as unknown as Record<string, unknown>;
+    case 'factory':
+      return (await mergeFactorySectionDraft(
+        entity as unknown as FactorySectionDetail,
+        draft,
+        token,
+      )) as unknown as Record<string, unknown>;
+    case 'quality':
+      return (await mergeQualityRecordDraft(
+        entity as unknown as QualityRecordDetail,
+        draft,
+        token,
+      )) as unknown as Record<string, unknown>;
+    case 'site/sections':
+      return (await mergeSiteSectionDraft(
+        entity as unknown as SiteSection,
+        draft,
+        token,
+      )) as unknown as Record<string, unknown>;
+  }
 }
