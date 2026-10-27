@@ -66,14 +66,28 @@ export function hasAnyPermission(
  * 之前的遗留字段，绝大多数账号都是 EDITOR，反推出来的「内容编辑」和
  * 真实角色（销售 / 超级管理员）根本对不上。
  */
+/**
+ * 角色 key → 中文名兜底映射。
+ * 正常路径是后端下发 roleNames（以 DB roles.name 为准，可在后台改中文名）；
+ * 这里只用于后端尚未下发 roleNames 的过渡期，避免界面直接暴露 SUPER_ADMIN 这类裸 key。
+ */
+const ROLE_KEY_FALLBACK_NAMES: Record<string, string> = {
+  SUPER_ADMIN: '超级管理员',
+  CONTENT_EDITOR: '内容编辑',
+  SALES: '销售',
+  E2E_VISITOR_BROWSER: '访客',
+};
+
 export function roleDisplayName(
   profile: Pick<AdminProfile, 'roles' | 'roleNames'> | null | undefined,
 ): string {
   if (!profile) return '';
   const names = profile.roleNames ?? [];
   if (names.length > 0) return names.join(' / ');
-  // 老后端（未下发 roleNames）时的兜底：至少别显示空白
-  return (profile.roles ?? []).join(' / ');
+  const keys = profile.roles ?? [];
+  if (keys.length === 0) return '';
+  // 兜底：先查本地中文名，查不到才退回裸 key（新增角色未登记时仍有显示）
+  return keys.map((k) => ROLE_KEY_FALLBACK_NAMES[k] ?? k).join(' / ');
 }
 
 /** Dashboard 统计（GET /cms/stats，全部为后端真实计数） */
