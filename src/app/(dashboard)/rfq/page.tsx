@@ -14,6 +14,7 @@ import {
 } from '@/lib/rfq';
 import { getSessionToken } from '@/lib/session';
 import { RfqNotifyBadge } from './notify-badge';
+import { QuickResendButton } from './quick-resend-button';
 import { RfqStatusBadge } from './status-badge';
 
 export const dynamic = 'force-dynamic';
@@ -52,7 +53,7 @@ export default async function RfqListPage({
     <Container width="page" className="py-8">
       <PageHeader
         title="RFQ 询盘管理"
-        description="海外采购商通过官网提交的询价请求。点击任意记录查看详情并更新跟进状态。"
+        description="海外采购商通过官网提交的询价请求。点击客户姓名或右侧「查看详情」，可查看完整需求、跟进状态与通知补发。"
       />
 
       {/* 状态筛选 */}
@@ -107,6 +108,7 @@ export default async function RfqListPage({
                   <Th>分配至</Th>
                   <Th>通知</Th>
                   <Th>Created</Th>
+                  <Th>操作</Th>
                 </tr>
               </thead>
               <tbody>
@@ -133,9 +135,23 @@ export default async function RfqListPage({
                       )}
                     </Td>
                     <Td>
-                      <RfqNotifyBadge status={item.notifyStatus} />
+                      <Link
+                        href={`/rfq/${item.id}`}
+                        className="inline-flex"
+                        title="查看详情 / 补发通知"
+                      >
+                        <RfqNotifyBadge status={item.notifyStatus} />
+                      </Link>
                     </Td>
                     <Td className="whitespace-nowrap">{formatDateTime(item.createdAt)}</Td>
+                    <Td className="whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/rfq/${item.id}`}>查看详情</Link>
+                        </Button>
+                        {item.notifyStatus !== 'SENT' ? <QuickResendButton id={item.id} /> : null}
+                      </div>
+                    </Td>
                   </tr>
                 ))}
               </tbody>
@@ -165,8 +181,9 @@ export default async function RfqListPage({
                       <span className="flex items-center gap-2 text-caption text-text-muted">
                         通知：<RfqNotifyBadge status={item.notifyStatus} />
                       </span>
-                      <span className="text-caption text-text-muted">
-                        {formatDateTime(item.createdAt)}
+                      <span className="flex items-center justify-between gap-2 text-caption text-text-muted">
+                        <span>{formatDateTime(item.createdAt)}</span>
+                        <span className="font-medium text-primary">查看详情 →</span>
                       </span>
                     </CardContent>
                   </Card>
