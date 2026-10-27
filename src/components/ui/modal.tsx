@@ -9,7 +9,9 @@ import { Overlay } from '@/components/ui/overlay';
  * Modal —— 通用弹窗容器（Phase 4.6 新增，2026-10-26 收敛到 Overlay 基元）。
  *
  * 后台的「创建 / 查看 / 编辑」类交互统一走本组件，行为约定：
- *   · Esc 与点击遮罩均可关闭；关闭 ≠ 提交（与「关闭弹窗 ≠ 关闭计划」同思路）
+ *   · Esc 关闭；**点击遮罩不关闭**（长表单误点一次就丢全部输入，代价太大），
+ *     关闭入口只有 Esc 与明确的按钮（右上角「关闭」/ footer 的「取消」）
+ *   · 关闭 ≠ 提交（与「关闭弹窗 ≠ 关闭计划」同思路）
  *   · 打开时锁定背景滚动，关闭后恢复
  *   · 标题区右侧固定关闭按钮，footer 由调用方传入
  *
@@ -53,6 +55,8 @@ export function Modal({
       onClose={onClose}
       label={title}
       align="top"
+      // 显式关闭「点遮罩关闭」：长表单里误点面板外会丢掉全部输入
+      closeOnBackdrop={false}
       panelClassName={cn(
         'flex flex-col rounded-lg border border-border bg-background shadow-lg',
         MAX_WIDTH_CLASS[maxWidth],

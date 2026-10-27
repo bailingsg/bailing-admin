@@ -17,7 +17,8 @@ import { cn } from '@/lib/utils';
  * 现在的约定：
  *   · 关闭时**不渲染任何 DOM**，不存在常驻遮罩；
  *   · 所有遮罩都带 `data-bailing-overlay` 标记，外部注入层可据此被准确区分；
- *   · Esc 关闭、点击遮罩关闭、打开时锁定背景滚动、焦点移入面板并在关闭后归还；
+ *   · Esc 关闭、**点击遮罩不关闭**（2026-10-27 调整）、打开时锁定背景滚动、
+ *     焦点移入面板并在关闭后归还；
  *   · 遮罩只在 `open` 时存在，且不拦截 Esc 的冒泡（避免与上层弹窗互相关闭）。
  */
 export const OVERLAY_MARKER = 'data-bailing-overlay';
@@ -25,7 +26,7 @@ export const OVERLAY_MARKER = 'data-bailing-overlay';
 export interface OverlayProps {
   /** 是否打开。关闭时本组件不渲染任何节点 */
   open: boolean;
-  /** 关闭回调（Esc / 点击遮罩触发） */
+  /** 关闭回调（Esc 键、或调用方显式传 closeOnBackdrop=true 时的遮罩点击触发） */
   onClose: () => void;
   /** 无障碍标签，作为 role=dialog 的 aria-label */
   label: string;
@@ -37,7 +38,14 @@ export interface OverlayProps {
   backdropClassName?: string;
   /** 垂直对齐：center 居中，top 顶部对齐（长表单用） */
   align?: 'center' | 'top';
-  /** 点击遮罩是否关闭，默认 true */
+  /**
+   * 点击遮罩是否关闭。**默认 false（2026-10-27 起）**。
+   *
+   * 后台的弹窗多为长表单（联系方式、账号、订单、样品、分区文案…），
+   * 鼠标在面板外误点一下就把整页输入清空，代价太大。
+   * 关闭入口收敛为两个明确动作：Esc 键、面板右上角「关闭」/底部「取消」按钮。
+   * 需要「点外面就关」的极少数场景（如纯图片预览）可显式传 true。
+   */
   closeOnBackdrop?: boolean;
 }
 
@@ -49,7 +57,7 @@ export function Overlay({
   panelClassName,
   backdropClassName,
   align = 'center',
-  closeOnBackdrop = true,
+  closeOnBackdrop = false,
 }: OverlayProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
   const restoreFocusRef = React.useRef<HTMLElement | null>(null);
