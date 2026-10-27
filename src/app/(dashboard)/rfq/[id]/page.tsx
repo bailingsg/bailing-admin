@@ -149,6 +149,19 @@ export default async function RfqDetailPage({ params }: { params: Promise<{ id: 
               {rfq.notifiedAt ? ` · 最近成功：${formatDateTime(rfq.notifiedAt)}` : ''}
             </span>
           </div>
+          <p className="text-caption text-text-secondary">
+            收件人：
+            {rfq.assigneeName ? (
+              <>
+                {rfq.assigneeName}
+                {rfq.assigneeEmail ? (
+                  <span className="ml-1 text-text-muted">&lt;{rfq.assigneeEmail}&gt;</span>
+                ) : null}
+              </>
+            ) : (
+              <span className="text-text-muted">未分配（走系统兜底收件邮箱）</span>
+            )}
+          </p>
           {rfq.notifyStatus === 'FAILED' && rfq.notifyError ? (
             <p className="text-caption break-words text-destructive">
               最近失败原因：{rfq.notifyError}
