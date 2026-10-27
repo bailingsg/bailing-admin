@@ -390,6 +390,15 @@ export function ContactFormModal({
             </label>
           </div>
 
+          {/* 联动说明：官网「订单背后的人」不再用关于页的静态团队照片，
+              直接读这两项都勾选的员工，因此这里必须把条件写清楚 */}
+          <p className="rounded-md border border-border bg-surface px-4 py-3 text-caption text-text-muted">
+            关于页「订单背后的人」展示的是
+            <span className="font-semibold text-foreground">同时勾选</span>
+            「在官网展示该联系人」和「标记为询盘联系人」的同事，
+            头像即此处上传的头像，保存后官网立即更新。
+          </p>
+
           <FormField
             label="内部备注"
             htmlFor="contact-internal-note"
