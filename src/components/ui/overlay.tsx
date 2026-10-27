@@ -54,6 +54,21 @@ export function Overlay({
   const panelRef = React.useRef<HTMLDivElement>(null);
   const restoreFocusRef = React.useRef<HTMLElement | null>(null);
 
+  /**
+   * onClose 用 ref 持有，**绝不写进下面 effect 的依赖**。
+   *
+   * 调用方几乎都是内联箭头函数（`onClose={() => setOpen(false)}`），
+   * 每次父组件重渲染都会产生新引用。若把它放进依赖，弹窗内每输入一个字符
+   * （表单 state 变化 → 重渲染 → 新 onClose）就会让 effect 清理 + 重跑：
+   *   清理时 `restoreFocusRef.current?.focus()` 把焦点抢回触发按钮，
+   *   重跑时 setTimeout 再把焦点移到面板内第一个可聚焦元素（「关闭」按钮）。
+   * 用户看到的现象就是「输入一个字符就失焦」。
+   */
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   React.useEffect(() => {
     if (!open) return;
 
@@ -62,7 +77,7 @@ export function Overlay({
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape') return;
       // 不阻止默认行为（避免影响浏览器原生 Esc 语义），只冒泡给本层处理
-      onClose();
+      onCloseRef.current();
     }
     document.addEventListener('keydown', onKeyDown);
 
@@ -86,7 +101,7 @@ export function Overlay({
       // 焦点归还触发元素
       restoreFocusRef.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
