@@ -86,3 +86,64 @@ export function getVisitorRecords(
   });
   return authorizedRequest<VisitorRecordsResponse>(`/cms/visitor-records?${query.toString()}`, token);
 }
+
+/* ────────────────────────── 近期访客 IP（2026-10-27） ────────────────────────── */
+
+/** 明细天数白名单（与后端 DTO 逐字一致，其它值后端 400） */
+export const VISITOR_IP_DAYS = [7, 30] as const;
+export type VisitorIpDays = (typeof VISITOR_IP_DAYS)[number];
+
+/** 单条 IP 明细（白名单字段：userAgent 不返回） */
+export interface VisitorIpItem {
+  id: string;
+  /** 完整 IP（IPv4 点分 / IPv6 压缩表示） */
+  ip: string;
+  /** ISO 3166-1 alpha-2，未解析出为 null */
+  country: string | null;
+  /** 中文国家名（后端用 Intl.DisplayNames 生成），未解析出为 null */
+  countryName: string | null;
+  visitedAt: string; // ISO
+}
+
+/** 国家分布（按访问次数降序，未知国家排最后） */
+export interface VisitorCountryStat {
+  country: string | null;
+  countryName: string | null;
+  /** 访问次数 = 该国家的明细行数 */
+  visits: number;
+  /** 独立 IP 数 = COUNT(DISTINCT ip)，不是行数 */
+  uniqueIps: number;
+}
+
+/** visitor-ips 响应 */
+export interface VisitorIpsResponse {
+  scope: VisitorScope;
+  days: VisitorIpDays;
+  items: VisitorIpItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  /** 国家分布：只受时间窗约束，不跟随 ip / country 过滤 */
+  countries: VisitorCountryStat[];
+  generatedAt: string;
+}
+
+/**
+ * 近期访客 IP 明细 + 国家分布（visitor_records.read；非超管 403）。
+ *
+ * days 只接受 7 / 30；ip 为前缀匹配（如 `203.0.113.`），country 为两位国家代码。
+ */
+export function getVisitorIps(
+  token: string | null,
+  params: { days: VisitorIpDays; page: number; pageSize: number; ip?: string; country?: string },
+): Promise<ApiResult<VisitorIpsResponse>> {
+  const query = new URLSearchParams({
+    days: String(params.days),
+    page: String(params.page),
+    pageSize: String(params.pageSize),
+  });
+  if (params.ip) query.set('ip', params.ip);
+  if (params.country) query.set('country', params.country);
+  return authorizedRequest<VisitorIpsResponse>(`/cms/visitor-ips?${query.toString()}`, token);
+}

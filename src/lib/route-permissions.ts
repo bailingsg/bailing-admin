@@ -35,7 +35,10 @@ export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/samples': ['samples.read'],
   '/orders': ['orders.read'],
   '/inventory': ['inventory.read'],
-  '/visitor-records': ['visitor_records.read'],
+  // 访客记录页承载两个数据面：概览/趋势（visitor_stats.read）与
+  // IP 明细/国家分布（visitor_records.read）。命中任一即可进入，
+  // 页内按各自权限分区渲染——缺哪个就只隐藏那一块，不整页拦死。
+  '/visitor-records': ['visitor_records.read', 'visitor_stats.read'],
   '/contacts': ['contacts.read'],
   '/accounts': ['accounts.read'],
   '/roles': ['roles.read'],
