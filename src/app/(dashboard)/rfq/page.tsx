@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatDateTime } from '@/lib/format';
+import { getCurrentAdmin } from '@/lib/api';
 import {
   getRfqList,
   RFQ_STATUS_LABELS,
@@ -35,6 +36,9 @@ function isStatus(value: string | undefined): value is RfqStatus {
  *
  * 数据来自后端 GET /api/v1/rfq（JWT + rfq.read 权限）。
  * 移动端渲染为卡片列表，桌面端渲染为表格 —— 均不产生横向滚动。
+ *
+ * 数据隔离（2026-10-28）：非超管账号（业务 / 销售）后端只返回「分配给本人」的询盘，
+ * 前端相应地把「分配至」列收起（恒为本人，无信息量），并把文案改为「我的询盘」。
  */
 export default async function RfqListPage({
   searchParams,
@@ -47,13 +51,21 @@ export default async function RfqListPage({
 
   const token = await getSessionToken();
 
-  const result = await getRfqList(token, { page, pageSize: PAGE_SIZE, status });
+  const [result, adminResult] = await Promise.all([
+    getRfqList(token, { page, pageSize: PAGE_SIZE, status }),
+    getCurrentAdmin(token),
+  ]);
+  const isSuperAdmin = adminResult.ok && adminResult.data.isSuperAdmin === true;
 
   return (
     <Container width="page" className="py-8">
       <PageHeader
-        title="RFQ 询盘管理"
-        description="海外采购商通过官网提交的询价请求。点击客户姓名或右侧「查看详情」，可查看完整需求、跟进状态与通知补发。"
+        title={isSuperAdmin ? 'RFQ 询盘管理' : '我的询盘'}
+        description={
+          isSuperAdmin
+            ? '海外采购商通过官网提交的询价请求。点击客户姓名或右侧「查看详情」，可查看完整需求、跟进状态与通知补发。'
+            : '分配给我的询价请求。点击客户姓名或右侧「查看详情」，可查看完整需求并更新跟进状态。'
+        }
       />
 
       {/* 状态筛选 */}
@@ -84,7 +96,11 @@ export default async function RfqListPage({
           <CardContent className="py-10 text-center">
             <p className="text-body font-medium text-foreground">暂无询盘</p>
             <p className="mt-1 text-small text-text-secondary">
-              {status ? '该状态下还没有记录。' : '当客户通过官网提交询价后，会显示在这里。'}
+              {status
+                ? '该状态下还没有记录。'
+                : isSuperAdmin
+                  ? '当客户通过官网提交询价后，会显示在这里。'
+                  : '目前没有分配给我的询盘。新线索分配给我后会显示在这里。'}
             </p>
           </CardContent>
         </Card>
@@ -105,7 +121,7 @@ export default async function RfqListPage({
                   <Th>Country</Th>
                   <Th>Product</Th>
                   <Th>Status</Th>
-                  <Th>分配至</Th>
+                  {isSuperAdmin ? <Th>分配至</Th> : null}
                   <Th>通知</Th>
                   <Th>Created</Th>
                   <Th>操作</Th>
@@ -125,15 +141,20 @@ export default async function RfqListPage({
                     <Td>
                       <RfqStatusBadge status={item.status} />
                     </Td>
-                    <Td>
-                      {item.assigneeName ? (
-                        <span className="text-text-secondary" title={item.assigneeEmail ?? undefined}>
-                          {item.assigneeName}
-                        </span>
-                      ) : (
-                        <span className="text-text-muted">未分配</span>
-                      )}
-                    </Td>
+                    {isSuperAdmin ? (
+                      <Td>
+                        {item.assigneeName ? (
+                          <span
+                            className="text-text-secondary"
+                            title={item.assigneeEmail ?? undefined}
+                          >
+                            {item.assigneeName}
+                          </span>
+                        ) : (
+                          <span className="text-text-muted">未分配</span>
+                        )}
+                      </Td>
+                    ) : null}
                     <Td>
                       <Link
                         href={`/rfq/${item.id}`}
@@ -174,10 +195,12 @@ export default async function RfqListPage({
                         {item.country}
                         {item.productName ? ` · ${item.productName}` : ''}
                       </span>
-                      <span className="text-caption text-text-muted">
-                        分配至：
-                        {item.assigneeName ?? '未分配'}
-                      </span>
+                      {isSuperAdmin ? (
+                        <span className="text-caption text-text-muted">
+                          分配至：
+                          {item.assigneeName ?? '未分配'}
+                        </span>
+                      ) : null}
                       <span className="flex items-center gap-2 text-caption text-text-muted">
                         通知：<RfqNotifyBadge status={item.notifyStatus} />
                       </span>

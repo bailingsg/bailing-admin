@@ -34,6 +34,11 @@ function StatusRow({ label, count, variant }: { label: string; count: number; va
  * 数据全部来自后端 GET /api/v1/cms/stats（JWT 保护）的**真实计数**：
  * 不展示任何虚构数字（如 1000 customers / 500 products）。
  *
+ * 口径按角色隔离（2026-10-28）：
+ *   · 超级管理员 → 全局统计（询盘 + 产品 / 文章等内容资产）
+ *   · 业务 / 销售账号 → **只统计分配给本人的询盘**，且不展示产品 / 文章等全局内容资产，
+ *     避免业务账号在概览里看到别人的线索与跟自己无关的全局数字
+ *
  * 2026-10-27：访客概览与访问趋势已迁至独立的 /visitor-records 页
  * （与 IP 明细、国家分布放在一起，避免同一份数据在两处各看一半）。
  */
@@ -57,19 +62,25 @@ export default async function DashboardPage() {
     errorMessage = result.error;
   }
 
-  // 无 rfq.read 的账号（如销售）看不到询盘入口，按钮不渲染（后端仍是最终边界）
   const admin: AdminProfile | null = adminResult.ok ? adminResult.data : null;
+  // 无 rfq.read 的账号（如销售）看不到询盘入口，按钮不渲染（后端仍是最终边界）
   const canSeeRfq = hasPermission(admin, 'rfq.read');
+  // 超管看全局；其余账号（业务 / 销售）只看自己的询盘，内容资产一律不展示
+  const isSuperAdmin = admin?.isSuperAdmin === true;
 
   return (
     <>
       <PageHeader
         title="Dashboard"
-        description="询盘与内容管理概览。数据来自后端实时统计，无演示数字。"
+        description={
+          isSuperAdmin
+            ? '询盘与内容管理概览。数据来自后端实时统计，无演示数字。'
+            : '我的询盘概览。仅统计分配给本人的询盘，数据来自后端实时统计。'
+        }
         actions={
           canSeeRfq ? (
             <Button asChild variant="outline" size="sm">
-              <Link href="/rfq">前往询盘管理</Link>
+              <Link href="/rfq">{isSuperAdmin ? '前往询盘管理' : '查看我的询盘'}</Link>
             </Button>
           ) : undefined
         }
@@ -98,27 +109,55 @@ export default async function DashboardPage() {
                 业务概览
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <StatCard
-                  label="RFQ 询盘总数"
-                  value={stats.rfq.total}
-                  hint="官网提交的全部询价请求"
-                />
-                <StatCard
-                  label="新询盘（待跟进）"
-                  value={stats.rfq.byStatus.NEW}
-                  hint="状态为 NEW、尚未联系的询盘"
-                  badge={<Badge variant="warning">待处理</Badge>}
-                />
-                <StatCard
-                  label="产品"
-                  value={stats.products.total}
-                  hint={`已发布 ${stats.products.published} · 草稿 ${stats.products.draft}`}
-                />
-                <StatCard
-                  label="博客文章"
-                  value={stats.blogPosts.total}
-                  hint={`已发布 ${stats.blogPosts.published} · 草稿 ${stats.blogPosts.draft}`}
-                />
+                {isSuperAdmin ? (
+                  <>
+                    <StatCard
+                      label="RFQ 询盘总数"
+                      value={stats.rfq.total}
+                      hint="官网提交的全部询价请求"
+                    />
+                    <StatCard
+                      label="新询盘（待跟进）"
+                      value={stats.rfq.byStatus.NEW}
+                      hint="状态为 NEW、尚未联系的询盘"
+                      badge={<Badge variant="warning">待处理</Badge>}
+                    />
+                    <StatCard
+                      label="产品"
+                      value={stats.products.total}
+                      hint={`已发布 ${stats.products.published} · 草稿 ${stats.products.draft}`}
+                    />
+                    <StatCard
+                      label="博客文章"
+                      value={stats.blogPosts.total}
+                      hint={`已发布 ${stats.blogPosts.published} · 草稿 ${stats.blogPosts.draft}`}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <StatCard
+                      label="我的询盘总数"
+                      value={stats.rfq.total}
+                      hint="仅统计分配给我的询盘"
+                    />
+                    <StatCard
+                      label="待跟进（新询盘）"
+                      value={stats.rfq.byStatus.NEW}
+                      hint="分配给我、状态为 NEW 的询盘"
+                      badge={<Badge variant="warning">待处理</Badge>}
+                    />
+                    <StatCard
+                      label="已联系"
+                      value={stats.rfq.byStatus.CONTACTED}
+                      hint="我已联系、等待客户反馈"
+                    />
+                    <StatCard
+                      label="已报价"
+                      value={stats.rfq.byStatus.QUOTED}
+                      hint="我已发出报价的询盘"
+                    />
+                  </>
+                )}
               </div>
             </section>
 
@@ -126,11 +165,15 @@ export default async function DashboardPage() {
               <h2 id="breakdown-heading" className="mb-3 text-heading-sm">
                 询盘状态分布
               </h2>
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className={isSuperAdmin ? 'grid gap-4 lg:grid-cols-2' : 'grid gap-4'}>
                 <Card>
                   <CardHeader>
-                    <CardTitle>按跟进状态</CardTitle>
-                    <CardDescription>与询盘管理页的状态一一对应</CardDescription>
+                    <CardTitle>{isSuperAdmin ? '按跟进状态' : '我的询盘按跟进状态'}</CardTitle>
+                    <CardDescription>
+                      {isSuperAdmin
+                        ? '与询盘管理页的状态一一对应'
+                        : '仅包含分配给我的询盘，与询盘管理页的状态一一对应'}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ul className="divide-y divide-border">
@@ -142,37 +185,39 @@ export default async function DashboardPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>内容资产</CardTitle>
-                    <CardDescription>CMS 模块接入前的真实存量</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="divide-y divide-border">
-                      <li className="flex items-center justify-between gap-3 py-2">
-                        <span className="text-small text-foreground">产品分类</span>
-                        <span className="text-small font-medium tabular-nums text-foreground">
-                          {stats.categories}
-                        </span>
-                      </li>
-                      <li className="flex items-center justify-between gap-3 py-2">
-                        <span className="text-small text-foreground">产品（已发布）</span>
-                        <span className="text-small font-medium tabular-nums text-foreground">
-                          {stats.products.published}
-                        </span>
-                      </li>
-                      <li className="flex items-center justify-between gap-3 py-2">
-                        <span className="text-small text-foreground">博客文章（已发布）</span>
-                        <span className="text-small font-medium tabular-nums text-foreground">
-                          {stats.blogPosts.published}
-                        </span>
-                      </li>
-                    </ul>
-                    <p className="mt-3 text-caption text-text-muted">
-                      Products / Media / Blog 等 CMS 模块将在后续阶段开放，当前仅展示存量计数。
-                    </p>
-                  </CardContent>
-                </Card>
+                {isSuperAdmin ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>内容资产</CardTitle>
+                      <CardDescription>CMS 模块接入前的真实存量</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="divide-y divide-border">
+                        <li className="flex items-center justify-between gap-3 py-2">
+                          <span className="text-small text-foreground">产品分类</span>
+                          <span className="text-small font-medium tabular-nums text-foreground">
+                            {stats.categories}
+                          </span>
+                        </li>
+                        <li className="flex items-center justify-between gap-3 py-2">
+                          <span className="text-small text-foreground">产品（已发布）</span>
+                          <span className="text-small font-medium tabular-nums text-foreground">
+                            {stats.products.published}
+                          </span>
+                        </li>
+                        <li className="flex items-center justify-between gap-3 py-2">
+                          <span className="text-small text-foreground">博客文章（已发布）</span>
+                          <span className="text-small font-medium tabular-nums text-foreground">
+                            {stats.blogPosts.published}
+                          </span>
+                        </li>
+                      </ul>
+                      <p className="mt-3 text-caption text-text-muted">
+                        Products / Media / Blog 等 CMS 模块将在后续阶段开放，当前仅展示存量计数。
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : null}
               </div>
             </section>
           </>
