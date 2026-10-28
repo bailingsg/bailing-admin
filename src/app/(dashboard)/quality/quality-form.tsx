@@ -14,6 +14,7 @@ import {
 } from '@/lib/enterprise';
 import { saveQualityRecordAction, type QualityFormState } from './actions';
 import { QualityPickerModal } from './media-picker';
+import { useFormToast } from '@/lib/use-form-toast';
 
 /**
  * 质量记录表单（创建 / 编辑复用，Phase 4.5）。
@@ -60,6 +61,9 @@ export function QualityRecordForm({ record }: QualityFormProps) {
   );
   const [state, formAction, pending] = React.useActionState(boundAction, INITIAL_STATE);
 
+  // 保存结果走顶部气泡：保存按钮在页面最底部，顶部内联提示看不见
+  useFormToast(state, { successMessage: isEdit ? '质量体系内容已保存' : '质量体系内容已创建' });
+
   React.useEffect(() => {
     if (state.ok && !isEdit && state.savedId) {
       router.push(`/quality/${state.savedId}/edit`);
@@ -84,23 +88,6 @@ export function QualityRecordForm({ record }: QualityFormProps) {
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
-      {state.error ? (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-small text-destructive"
-        >
-          {state.error}
-        </div>
-      ) : null}
-      {state.ok && isEdit ? (
-        <div
-          role="status"
-          className="rounded-md border border-success-600/30 bg-success-50 px-4 py-3 text-small text-success-600"
-        >
-          已保存
-        </div>
-      ) : null}
-
       <input type="hidden" name="mediaId" value={file?.mediaId ?? ''} />
 
       {/* ---------------------------- 基本信息 ---------------------------- */}

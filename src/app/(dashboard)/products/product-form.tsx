@@ -12,6 +12,7 @@ import {
   type ProductStatus,
 } from '@/lib/products';
 import { saveProductAction, type ProductFormState } from './actions';
+import { useFormToast } from '@/lib/use-form-toast';
 
 /**
  * 产品表单（创建 / 编辑复用）。
@@ -51,6 +52,9 @@ export function ProductForm({ categories, product }: ProductFormProps) {
 
   const [state, formAction, pending] = React.useActionState(boundAction, INITIAL_STATE);
 
+  // 保存结果走顶部气泡：保存按钮在页面最底部，顶部内联提示看不见
+  useFormToast(state, { successMessage: isEdit ? '产品已保存' : '产品已创建' });
+
   // 简短描述实时字数（输入即刷新；编辑旧数据可能已超限，首次渲染即标红）
   const [shortDescriptionCount, setShortDescriptionCount] = React.useState(() =>
     product?.shortDescription ? product.shortDescription.length : 0,
@@ -69,23 +73,6 @@ export function ProductForm({ categories, product }: ProductFormProps) {
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
-      {state.error ? (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-small text-destructive"
-        >
-          {state.error}
-        </div>
-      ) : null}
-      {state.ok && isEdit ? (
-        <div
-          role="status"
-          className="rounded-md border border-success-600/30 bg-success-50 px-4 py-3 text-small text-success-600"
-        >
-          已保存
-        </div>
-      ) : null}
-
       {/* ---------------------------- 基本信息 ---------------------------- */}
       <Card>
         <CardHeader>

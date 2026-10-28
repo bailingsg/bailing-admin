@@ -14,6 +14,7 @@ import {
 } from '@/lib/enterprise';
 import { saveFactorySectionAction, type FactoryFormState } from './actions';
 import { MediaPickerModal } from './media-picker';
+import { useFormToast } from '@/lib/use-form-toast';
 
 /**
  * 工厂分区表单（创建 / 编辑复用，Phase 4.5）。
@@ -61,6 +62,9 @@ export function FactorySectionForm({ section }: FactoryFormProps) {
     [section?.id],
   );
   const [state, formAction, pending] = React.useActionState(boundAction, INITIAL_STATE);
+
+  // 保存结果走顶部气泡：保存按钮在页面最底部，顶部内联提示看不见
+  useFormToast(state, { successMessage: isEdit ? '工厂实力内容已保存' : '工厂实力内容已创建' });
 
   React.useEffect(() => {
     if (state.ok && !isEdit && state.savedId) {
@@ -154,23 +158,6 @@ export function FactorySectionForm({ section }: FactoryFormProps) {
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
-      {state.error ? (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-small text-destructive"
-        >
-          {state.error}
-        </div>
-      ) : null}
-      {state.ok && isEdit ? (
-        <div
-          role="status"
-          className="rounded-md border border-success-600/30 bg-success-50 px-4 py-3 text-small text-success-600"
-        >
-          已保存
-        </div>
-      ) : null}
-
       {/* 隐藏字段 */}
       <input type="hidden" name="coverMediaId" value={cover?.mediaId ?? ''} />
       <input type="hidden" name="imagesJson" value={imagesJson} />

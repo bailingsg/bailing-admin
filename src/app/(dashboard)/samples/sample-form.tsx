@@ -6,6 +6,7 @@ import { FormField, Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { showErrorToast, showSuccessToast } from '@/components/ui/toast';
 import { createSampleAction, updateSampleAction } from '@/app/(dashboard)/samples/actions';
 import type { SampleItem } from '@/lib/samples';
 
@@ -27,8 +28,6 @@ export function SampleFormModal({
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
-  const [error, setError] = React.useState<string | null>(null);
-  const [success, setSuccess] = React.useState(false);
 
   const [name, setName] = React.useState(sample?.name ?? '');
   const [spec, setSpec] = React.useState(sample?.spec ?? '');
@@ -40,7 +39,6 @@ export function SampleFormModal({
   const [remark, setRemark] = React.useState(sample?.remark ?? '');
 
   function reset() {
-    setError(null);
     setName(sample?.name ?? '');
     setSpec(sample?.spec ?? '');
     setMaterial(sample?.material ?? '');
@@ -53,16 +51,14 @@ export function SampleFormModal({
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setError(null);
-    setSuccess(false);
 
     const qty = Number.parseInt(quantity, 10);
     if (!Number.isFinite(qty) || qty < 1) {
-      setError('数量必须为正整数');
+      showErrorToast('数量必须为正整数');
       return;
     }
     if (!unit.trim()) {
-      setError('请填写计量单位');
+      showErrorToast('请填写计量单位');
       return;
     }
 
@@ -91,11 +87,11 @@ export function SampleFormModal({
             });
 
       if (!result.ok) {
-        setError(result.error);
+        showErrorToast(result.error);
         return;
       }
-      setSuccess(true);
       setOpen(false);
+      showSuccessToast(mode === 'create' ? '样品已创建' : '样品已保存');
       router.refresh();
       if (mode === 'create') router.push(`/samples/${result.data.id}`);
     });
@@ -139,12 +135,6 @@ export function SampleFormModal({
         }
       >
         <form id="sample-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {success && !open ? null : null}
-          {error ? (
-            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-small text-destructive">
-              {error}
-            </p>
-          ) : null}
           <FormField label="样品名称" htmlFor="sample-name" required>
             <Input
               id="sample-name"

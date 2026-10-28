@@ -6,7 +6,7 @@ import { FormField, Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { showToast } from '@/components/ui/toast';
+import { showErrorToast, showToast } from '@/components/ui/toast';
 import {
   ORDER_CURRENCIES,
   ORDER_CURRENCY_LABELS,
@@ -81,7 +81,6 @@ export function OrderForm({
   const router = useRouter();
   const [open, setOpen] = React.useState(mode === 'edit');
   const [pending, startTransition] = React.useTransition();
-  const [error, setError] = React.useState<string | null>(null);
   // 防重复提交（useTransition 的 pending 不是同步状态，双击可能穿透）
   const submittingRef = React.useRef(false);
 
@@ -132,7 +131,6 @@ export function OrderForm({
   }
 
   function reset() {
-    setError(null);
     setCode(order?.code ?? '');
     setCustomerName(order?.customerName ?? '');
     setCountry(order?.country ?? '');
@@ -147,7 +145,6 @@ export function OrderForm({
 
   /** 「是 / 否」切换：改为否且已有库存时，先要求确认，不直接删除 */
   function chooseInventory(next: boolean) {
-    setError(null);
     if (next) {
       setHasInventory(true);
       setAwaitingRemovalDecision(false);
@@ -220,11 +217,10 @@ export function OrderForm({
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (submittingRef.current) return;
-    setError(null);
 
     const invalid = validate();
     if (invalid) {
-      setError(invalid);
+      showErrorToast(invalid);
       return;
     }
 
@@ -273,7 +269,7 @@ export function OrderForm({
               });
 
         if (!result.ok) {
-          setError(result.error);
+          showErrorToast(result.error);
           return;
         }
         setOpen(false);
@@ -348,12 +344,6 @@ export function OrderForm({
         }
       >
         <form id="order-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {error ? (
-            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-small text-destructive">
-              {error}
-            </p>
-          ) : null}
-
           {mode === 'create' ? (
             <FormField
               label="订单编号"

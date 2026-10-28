@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { INVENTORY_UNITS, type InventoryItem } from '@/lib/inventory';
-import { showToast } from '@/components/ui/toast';
+import { showErrorToast, showToast } from '@/components/ui/toast';
 import { createInventoryAction, updateInventoryAction } from './actions';
 
 /**
@@ -71,7 +71,6 @@ export function InventoryForm({
   // 避免进入库存详情页时编辑弹窗自动盖住页面。
   const [open, setOpen] = React.useState(openProp ?? false);
   const [pending, startTransition] = React.useTransition();
-  const [error, setError] = React.useState<string | null>(null);
   const submittingRef = React.useRef(false);
 
   const [productName, setProductName] = React.useState(item?.productName ?? '');
@@ -86,7 +85,6 @@ export function InventoryForm({
   }, [openProp]);
 
   function reset() {
-    setError(null);
     setProductName(item?.productName ?? '');
     setProductDetail(item?.productDetail ?? '');
     setQuantity(item?.quantity ?? '');
@@ -119,11 +117,10 @@ export function InventoryForm({
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (submittingRef.current) return;
-    setError(null);
 
     const invalid = validate();
     if (invalid) {
-      setError(invalid);
+      showErrorToast(invalid);
       return;
     }
 
@@ -148,7 +145,7 @@ export function InventoryForm({
             : await updateInventoryAction(item!.id, payload);
 
         if (!result.ok) {
-          setError(result.error ?? '保存失败');
+          showErrorToast(result.error ?? '保存失败');
           return;
         }
 
@@ -227,12 +224,6 @@ export function InventoryForm({
         }
       >
         <form id="inventory-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {error ? (
-            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-small text-destructive">
-              {error}
-            </p>
-          ) : null}
-
           {orderLocked ? (
             <div className="rounded-md border border-border bg-surface px-3 py-2">
               <p className="text-caption text-text-muted">关联订单（已锁定）</p>

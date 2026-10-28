@@ -10,6 +10,7 @@ import { type CmsProductListItem } from '@/lib/products';
 import { saveBlogPostAction, type BlogFormState } from './actions';
 import { RichTextEditor } from './rich-text-editor';
 import { CoverPicker } from './cover-picker';
+import { useFormToast } from '@/lib/use-form-toast';
 
 /**
  * 博客文章表单（创建 / 编辑复用）。
@@ -50,6 +51,9 @@ export function BlogPostForm({ categories, tags, products, post }: BlogPostFormP
 
   const [state, formAction, pending] = React.useActionState(boundAction, INITIAL_STATE);
 
+  // 保存结果走顶部气泡：保存按钮在页面最底部，顶部内联提示看不见
+  useFormToast(state, { successMessage: isEdit ? '文章已保存' : '文章已创建' });
+
   // 创建成功 → 跳转编辑页
   React.useEffect(() => {
     if (state.ok && !isEdit && state.savedId) {
@@ -59,23 +63,6 @@ export function BlogPostForm({ categories, tags, products, post }: BlogPostFormP
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
-      {state.error ? (
-        <div
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-small text-destructive"
-        >
-          {state.error}
-        </div>
-      ) : null}
-      {state.ok && isEdit ? (
-        <div
-          role="status"
-          className="rounded-md border border-success-600/30 bg-success-50 px-4 py-3 text-small text-success-600"
-        >
-          已保存
-        </div>
-      ) : null}
-
       {/* ---------------------------- 基本信息 ---------------------------- */}
       <Card>
         <CardHeader>
