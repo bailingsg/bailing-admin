@@ -10,7 +10,7 @@ import { withBasePath } from '@/lib/base-path';
 import { ROUTE_PERMISSIONS } from '@/lib/route-permissions';
 
 /**
- * 后台导航项。
+ * 后台导航项（二级菜单）。
  *
  * Phase 4.6 起，入口按**导航权限**动态显示：只有账号具备对应权限时才渲染，
  * 不再展示点了也进不去的菜单项（权限由后端 /auth/me 的 permissions 提供）。
@@ -24,49 +24,34 @@ export interface NavItem {
   permissions: string[];
 }
 
-/** 可折叠菜单组（Phase 5.0：SEO 管理中心） */
+/** 一级菜单：可折叠分组 */
 export interface NavGroup {
   /** 分组 key（用于展开态判断） */
   key: string;
   label: string;
-  /** 展示该分组所需的权限 key（命中任意一个即可） */
-  permissions: string[];
+  /** 二级菜单；分组可见性由子项决定（任一子项有权即渲染整组） */
   children: NavItem[];
 }
 
-/** 普通入口或可折叠分组 */
-type NavEntry = NavItem | NavGroup;
-
 /**
- * 导航分区（2026-10-28 加）。
+ * 一级菜单（模块）与二级菜单（功能）—— 2026-10-28 第二次改版。
  *
- * 背景：侧栏平铺到 20 项时，找「库存管理」要在一条没有停顿的列表里数格子，
- * 新人根本不知道哪些是内容、哪些是交易。分区只加**视觉标题**，不做折叠：
- * 条目总数才 20 个，折叠会让每次跳转多一次点击，反而更慢。
+ * 演进过程，别再走回头路：
+ *   ① 最初 20 项**全平铺** → 找「库存管理」得数格子；
+ *   ② 第一次改成「分区标题 + 全展开」→ 标题只是 11px 灰字，视觉上压不住
+ *      下面同字号的菜单项，看起来像误加的标签，而且总高溢出视口；
+ *   ③ 现在（本版）：**模块 = 一级菜单，可折叠可展开；功能 = 二级菜单，缩进挂在下面**。
+ *      默认只展开「当前路由所在的那一组」，其余收起 —— 侧栏总高恒定在一屏内。
  *
- * 分区顺序按使用频率与心智模型排：先看板，再管内容，最后配系统。
- * 权限过滤后**整区为空则连标题一起隐藏**，不留孤零零的「业务运营」标题。
+ * 一级菜单用按钮（button）而非链接：它本身不是页面，只是开关。
+ * 概览是单页入口，不套分组（一个孩子的分组等于多一次点击）。
  */
-export interface NavSection {
-  key: string;
-  /** 分区标题；null = 顶部独立入口（概览），不加标题 */
-  label: string | null;
-  items: NavEntry[];
-}
-
-const NAV_SECTIONS: NavSection[] = [
-  {
-    key: 'home',
-    label: null,
-    items: [
-      { href: '/dashboard', label: '概览', permissions: ROUTE_PERMISSIONS['/dashboard'] ?? [] },
-    ],
-  },
+const NAV_GROUPS: NavGroup[] = [
   {
     // 内容 = 前台要靠编辑不断更新的东西：产品、分类、文章、案例、图片
     key: 'content',
     label: '内容管理',
-    items: [
+    children: [
       { href: '/products', label: '产品管理', permissions: ROUTE_PERMISSIONS['/products'] ?? [] },
       { href: '/categories', label: '产品分类', permissions: ROUTE_PERMISSIONS['/categories'] ?? [] },
       { href: '/blog', label: '博客管理', permissions: ROUTE_PERMISSIONS['/blog'] ?? [] },
@@ -79,10 +64,10 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    // 站点建设 = 搭骨架与门面：页面文案、导航、企业实力页、SEO
+    // 站点建设 = 搭骨架与门面：页面文案、导航、企业实力页
     key: 'site',
     label: '站点建设',
-    items: [
+    children: [
       {
         href: '/site-content',
         label: '站点内容',
@@ -91,31 +76,31 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/navigation', label: '导航管理', permissions: ROUTE_PERMISSIONS['/navigation'] ?? [] },
       { href: '/factory', label: '工厂实力', permissions: ROUTE_PERMISSIONS['/factory'] ?? [] },
       { href: '/quality', label: '质量体系', permissions: ROUTE_PERMISSIONS['/quality'] ?? [] },
-      {
-        key: 'seo',
-        label: 'SEO',
-        permissions: ROUTE_PERMISSIONS['/seo'] ?? [],
-        children: [
-          { href: '/seo', label: '概览', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-          { href: '/seo/pages', label: '页面', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-          { href: '/seo/products', label: '产品', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-          { href: '/seo/blog', label: '博客', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-          { href: '/seo/media', label: '媒体 SEO', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-          { href: '/seo/redirects', label: '重定向', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-          { href: '/seo/sitemap', label: '站点地图', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-          { href: '/seo/robots', label: '爬虫规则', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-          { href: '/seo/schema', label: '结构化数据', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-          { href: '/seo/audit', label: 'SEO 体检', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-          { href: '/seo/settings', label: '全局设置', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
-        ],
-      },
+    ],
+  },
+  {
+    // SEO 单独成组：11 个子页，塞进「站点建设」会把那组撑到 15 项
+    key: 'seo',
+    label: 'SEO',
+    children: [
+      { href: '/seo', label: '概览', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/pages', label: '页面', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/products', label: '产品', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/blog', label: '博客', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/media', label: '媒体 SEO', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/redirects', label: '重定向', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/sitemap', label: '站点地图', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/robots', label: '爬虫规则', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/schema', label: '结构化数据', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/audit', label: 'SEO 体检', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
+      { href: '/seo/settings', label: '全局设置', permissions: ROUTE_PERMISSIONS['/seo'] ?? [] },
     ],
   },
   {
     // 业务运营 = 一条订单从询盘到发货的完整链路，顺序即业务流程
     key: 'business',
     label: '业务运营',
-    items: [
+    children: [
       { href: '/rfq', label: '询盘管理', permissions: ROUTE_PERMISSIONS['/rfq'] ?? [] },
       {
         href: '/lead-distribution',
@@ -131,7 +116,7 @@ const NAV_SECTIONS: NavSection[] = [
     // 数据分析 = 只看不改的旁路数据，与业务操作分开
     key: 'insight',
     label: '数据分析',
-    items: [
+    children: [
       {
         href: '/visitor-records',
         label: '访客记录',
@@ -143,7 +128,7 @@ const NAV_SECTIONS: NavSection[] = [
     // 系统设置 = 改这些会影响别人，天然属于「管理员才碰」的一组
     key: 'system',
     label: '系统设置',
-    items: [
+    children: [
       { href: '/contacts', label: '员工联系方式', permissions: ROUTE_PERMISSIONS['/contacts'] ?? [] },
       { href: '/accounts', label: '账号管理', permissions: ROUTE_PERMISSIONS['/accounts'] ?? [] },
       { href: '/roles', label: '角色与权限', permissions: ROUTE_PERMISSIONS['/roles'] ?? [] },
@@ -151,17 +136,19 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-/** 所有入口拉平（用于分组展开态等全局判断） */
-const ALL_GROUPS: NavGroup[] = NAV_SECTIONS.flatMap((section) =>
-  section.items.filter((entry): entry is NavGroup => 'children' in entry),
-);
+/** 顶部独立入口（不套分组） */
+const NAV_HOME: NavItem = {
+  href: '/dashboard',
+  label: '概览',
+  permissions: ROUTE_PERMISSIONS['/dashboard'] ?? [],
+};
 
-/** 类型收窄：有 children 即为可折叠分组 */
-function isGroup(entry: NavEntry): entry is NavGroup {
-  return 'children' in entry;
-}
-
-/** 子路由是否命中（`/seo` 只匹配自身，其余匹配前缀） */
+/**
+ * 二级菜单是否命中当前路由。
+ *
+ * 特例 `/seo`：它既是分组首页又带子路由，只精确匹配，
+ * 否则 `/seo/pages` 会把「概览」也点亮。
+ */
 function matchesChild(href: string, pathname: string): boolean {
   if (href === '/seo') return pathname === '/seo';
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -175,9 +162,9 @@ function matchesChild(href: string, pathname: string): boolean {
  *       因此只有右侧两角是圆角；sticky 吸附在视口左侧，内容滚动时自身不动。
  *       导航过长时在栏内滚动，滚动条隐藏（不占宽、不打断视觉）。
  *       < 768px 收起为顶部栏 + 汉堡展开面板。
- * 分组：按业务域分 6 区（概览 / 内容管理 / 站点建设 / 业务运营 / 数据分析 / 系统设置），
- *       分区只加视觉标题不折叠；SEO 是区内唯一的可折叠子分组，进入 /seo/* 时自动展开。
- *       权限过滤后整区为空则连标题一起隐藏。
+ * 层级：一级菜单 = 模块（可折叠），二级菜单 = 功能（缩进）。
+ *       默认只展开当前路由所在的分组；进入其它分组时自动展开它。
+ *       权限过滤后分组为空则不渲染该分组。
  *
  * @param permissions 当前账号的生效权限 key（服务端从 /auth/me 取，避免客户端猜权限）
  */
@@ -185,35 +172,29 @@ export function AdminSidebar({ permissions }: { permissions: string[] }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
 
-  // 分组展开态：首屏按当前路由初始化（避免水合后二次展开的闪烁）
-  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(() =>
-    Object.fromEntries(
-      ALL_GROUPS.map((group) => [
-        group.key,
-        group.children.some((child) => matchesChild(child.href, pathname)),
-      ]),
-    ),
-  );
-
   const panelId = 'admin-sidebar-nav';
   const allowed = (item: { permissions: string[] }): boolean =>
-    item.permissions.length === 0 ||
-    item.permissions.some((p) => permissions.includes(p));
+    item.permissions.length === 0 || item.permissions.some((p) => permissions.includes(p));
 
-  // 分组默认展开规则：位于分组任一子路由时自动展开
+  /** 分组是否包含当前路由 */
   const isGroupActive = (group: NavGroup): boolean =>
     group.children.some((child) => matchesChild(child.href, pathname));
+
+  // 分组展开态：首屏只展开当前路由所在的分组（避免水合后二次展开的闪烁）
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(() =>
+    Object.fromEntries(NAV_GROUPS.map((group) => [group.key, isGroupActive(group)])),
+  );
 
   React.useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // 路由变化后，若进入了某分组的子路由则展开它（手动折叠的状态在离开该分组后不再保留）
+  // 路由变化后自动展开命中的分组；其它分组保留用户手动展开/收起的状态
   React.useEffect(() => {
     setOpenGroups((prev) => {
       let changed = false;
       const next = { ...prev };
-      for (const group of ALL_GROUPS) {
+      for (const group of NAV_GROUPS) {
         const active = group.children.some((child) => matchesChild(child.href, pathname));
         if (active && !next[group.key]) {
           next[group.key] = true;
@@ -224,94 +205,74 @@ export function AdminSidebar({ permissions }: { permissions: string[] }) {
     });
   }, [pathname]);
 
-  /** 渲染单个入口：普通链接，或可折叠分组（SEO） */
-  const renderEntry = (entry: NavEntry) => {
-    if (isGroup(entry)) {
-      const groupActive = isGroupActive(entry);
-      const expanded = openGroups[entry.key] ?? false;
-      const childrenId = `${entry.key}-nav`;
+  /** 一级菜单：可折叠按钮 */
+  const renderGroup = (group: NavGroup) => {
+    const children = group.children.filter(allowed);
+    if (children.length === 0) return null;
 
-      return (
-        <div className="flex flex-col gap-1">
-          <button
-            type="button"
-            aria-expanded={expanded}
-            aria-controls={childrenId}
-            onClick={() => setOpenGroups((prev) => ({ ...prev, [entry.key]: !expanded }))}
-            className={cn(
-              'flex w-full items-center justify-between gap-2 rounded-md px-3 py-1 text-small',
-              'transition-colors duration-[var(--duration-fast)]',
-              'focus-visible:ring-2 focus-visible:ring-ring/60',
-              groupActive
-                ? 'bg-sidebar-active font-medium text-sidebar-foreground'
-                : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground',
-            )}
-          >
-            <span>{entry.label}</span>
-            <ChevronDown
-              aria-hidden="true"
-              className={cn(
-                'size-4 shrink-0 transition-transform duration-[var(--duration-fast)]',
-                expanded ? 'rotate-0' : '-rotate-90',
-              )}
-            />
-          </button>
-
-          {expanded ? (
-            <div
-              id={childrenId}
-              className="ml-3 flex flex-col gap-0.5 border-l border-sidebar-border pl-2"
-            >
-              {entry.children.map((child) => {
-                const active = matchesChild(child.href, pathname);
-                return (
-                  <Link
-                    key={child.href}
-                    href={child.href}
-                    aria-current={active ? 'page' : undefined}
-                    className={cn(
-                      'rounded-md px-3 py-1.5 text-caption',
-                      'transition-colors duration-[var(--duration-fast)]',
-                      active
-                        ? 'bg-sidebar-active font-medium text-sidebar-foreground'
-                        : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground',
-                    )}
-                  >
-                    {child.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-      );
-    }
-
-    // 概览是精确匹配，其余按前缀匹配（/products 覆盖 /products/new 等）
-    const active =
-      entry.href === '/dashboard'
-        ? pathname === '/dashboard'
-        : pathname === entry.href || pathname.startsWith(`${entry.href}/`);
+    const groupActive = isGroupActive(group);
+    const expanded = openGroups[group.key] ?? false;
+    const childrenId = `${group.key}-nav`;
 
     return (
-      <Link
-        href={entry.href}
-        aria-current={active ? 'page' : undefined}
-        className={cn(
-          // py-1 而非 py-2：加 5 个分区标题后总高会顶出视口。
-          // 实测 1440×1000 下 py-2 溢出 ~140px、py-1.5 溢出 41px，
-          // py-1 + 标题收紧后才在 1080p 笔记本（视口约 950）一屏装下。
-          'rounded-md px-3 py-1 text-small',
-          'transition-colors duration-[var(--duration-fast)]',
-          active
-            ? 'bg-sidebar-active font-medium text-sidebar-foreground'
-            : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground',
-        )}
-      >
-        {entry.label}
-      </Link>
+      <div key={group.key} className="flex flex-col gap-0.5">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={childrenId}
+          onClick={() => setOpenGroups((prev) => ({ ...prev, [group.key]: !expanded }))}
+          className={cn(
+            // 一级菜单：字号/字重都比二级重一档，右侧带展开箭头，
+            // 让人一眼看出「这是个开关」而不是页面入口
+            'flex w-full items-center justify-between gap-2 rounded-md px-3 py-1.5 text-small font-medium',
+            'transition-colors duration-[var(--duration-fast)]',
+            'focus-visible:ring-2 focus-visible:ring-ring/60',
+            groupActive
+              ? 'bg-sidebar-active text-sidebar-foreground'
+              : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground',
+          )}
+        >
+          <span>{group.label}</span>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              'size-3.5 shrink-0 transition-transform duration-[var(--duration-fast)]',
+              expanded ? 'rotate-0' : '-rotate-90',
+            )}
+          />
+        </button>
+
+        {expanded ? (
+          <div
+            id={childrenId}
+            className="ml-3 flex flex-col gap-0.5 border-l border-sidebar-border pl-2"
+          >
+            {children.map((child) => {
+              const active = matchesChild(child.href, pathname);
+              return (
+                <Link
+                  key={child.href}
+                  href={child.href}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'rounded-md px-3 py-1 text-caption',
+                    'transition-colors duration-[var(--duration-fast)]',
+                    active
+                      ? 'bg-sidebar-active font-medium text-sidebar-foreground'
+                      : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground',
+                  )}
+                >
+                  {child.label}
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
     );
   };
+
+  const homeActive = pathname === NAV_HOME.href;
 
   return (
     <aside
@@ -384,27 +345,24 @@ export function AdminSidebar({ permissions }: { permissions: string[] }) {
           open ? 'flex' : 'hidden',
         )}
       >
-        {NAV_SECTIONS.map((section) => {
-          // 权限过滤后整区为空 → 标题也一起不渲染（不留空标题）
-          const visible = section.items.filter(allowed);
-          if (visible.length === 0) return null;
+        {/* 概览：单页入口，不套分组 */}
+        {allowed(NAV_HOME) ? (
+          <Link
+            href={NAV_HOME.href}
+            aria-current={homeActive ? 'page' : undefined}
+            className={cn(
+              'rounded-md px-3 py-1.5 text-small font-medium',
+              'transition-colors duration-[var(--duration-fast)]',
+              homeActive
+                ? 'bg-sidebar-active text-sidebar-foreground'
+                : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground',
+            )}
+          >
+            {NAV_HOME.label}
+          </Link>
+        ) : null}
 
-          return (
-            <div key={section.key} className="flex flex-col gap-0.5">
-              {section.label ? (
-                // 分区标题：小字 + 弱色 + 字距，只做视觉停顿，不可点击
-                <p className="px-3 pb-0.5 pt-1.5 text-[11px] font-medium tracking-[0.08em] text-sidebar-muted">
-                  {section.label}
-                </p>
-              ) : null}
-              {visible.map((entry) => (
-                <React.Fragment key={isGroup(entry) ? entry.key : entry.href}>
-                  {renderEntry(entry)}
-                </React.Fragment>
-              ))}
-            </div>
-          );
-        })}
+        {NAV_GROUPS.map(renderGroup)}
       </nav>
     </aside>
   );
